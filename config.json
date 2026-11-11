@@ -1,0 +1,9 @@
+{
+  "default_model": "GRU",
+  "prediction_horizon_minutes": 15,
+  "top_k_routes": 5,
+  "speed_limit_kmh": 60,
+  "controlled_intersection_delay_seconds": 30,
+  "volume_used_for_edge": "origin",
+  "notes": "volume_used_for_edge is provisional: flow conversion PDF says origin; A2B brief says destination. Confirm with tutor. These defaults do not imply models have been trained."
+}

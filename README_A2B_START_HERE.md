@@ -1,4 +1,4 @@
-# COS30019 Group 2 — Assignment 2B routing starter
+# COS30019 Group 2 — Assignment 2B routing + traffic conversion starter
 
 This is a **routing foundation only**, built from your uploaded A2A source code.
 It is **not a complete Assignment 2B submission**: it has no real SCATS dataset,
@@ -56,3 +56,12 @@ travel times** until Darren's conversion and real data are connected.
 
 Note: this demonstration does not prove A2B GUI input validation or actual
 routing changes from predicted traffic. Test fixtures simulate weights only.
+
+
+## Additional uploaded dataset review (2026-11-12)
+- `routing/travel_time.py` implements the supplied under-capacity traffic flow-to-speed relation, 60 km/h cap and intersection delay.
+- `tests/test_travel_time.py` validates conversion and demonstrates a synthetic traffic-caused route change.
+- `config.json` contains explicit provisional flow-site choice.
+- `docs/DATASET_AND_INTEGRATION_NOTES.md` describes uploaded data sources, unresolved ID mapping and flow-site contradiction.
+- Run `python -m unittest discover -s tests -v` to run original routing and additional conversion tests.
+- The .xls sources have not been parsed; models are NOT trained; road connectivity is NOT mapped.
