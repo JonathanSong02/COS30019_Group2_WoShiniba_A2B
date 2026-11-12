@@ -1,0 +1,4 @@
+.venv/
+data/raw/
+data/processed/scats_15min_by_approach.csv
+__pycache__/
