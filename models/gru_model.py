@@ -1,11 +1,12 @@
-"""GRU traffic-flow forecast baseline for COS30019 A2B.
+"""GRU traffic-flow forecasting for COS30019 Assignment 2B.
 
-Expected processed CSV columns: scats_site, datetime, traffic_volume_15min
-Datetime is a naive local ISO timestamp, for example 2006-10-04T08:15:00.
-Forecast semantics: observations through `as_of` -> prediction at
-`as_of + horizon_minutes`, where horizon is a multiple of 15 minutes.
-This module trains a model for ONE site and ONE horizon at a time.
-Production integration across all SCATS sites is still future work.
+Real SCATS training uses Darren's data_processing.dataset helpers so that
+GRU and LSTM share exactly the same calendar splits, training-only scaler,
+and valid sample windows. Blank/NaN traffic observations are missing, NEVER zero.
+
+Input CSV: scats_site, datetime, traffic_volume_15min
+Forecast: history up to `as_of` predicts the count at `as_of + horizon`.
+One model is trained per site, horizon, and sequence length.
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ import csv
 import json
 import math
 import random
+import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -23,19 +25,31 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 INTERVAL_MINUTES = 15
+SUPPORTED_HORIZONS = {15, 30, 60}
 
 
 @dataclass
 class TrainingSettings:
     site: str
     horizon_minutes: int = 15
-    lookback: int = 8
+    lookback: int = 8  # Same concept as LSTM's sequence_length
     hidden_size: int = 32
     epochs: int = 30
     batch_size: int = 64
     learning_rate: float = 0.001
     seed: int = 42
     patience: int = 6
+
+    def validate(self):
+        validate_horizon(self.horizon_minutes)
+        if not isinstance(self.lookback, int) or self.lookback < 1:
+            raise ValueError('lookback must be a positive integer')
+        if self.hidden_size < 1 or self.epochs < 1 or self.batch_size < 1:
+            raise ValueError('hidden_size, epochs and batch_size must be positive')
+        if not math.isfinite(self.learning_rate) or self.learning_rate <= 0:
+            raise ValueError('learning_rate must be positive')
+        if self.patience < 1:
+            raise ValueError('patience must be positive')
 
 
 class GRUTrafficModel(nn.Module):
@@ -50,215 +64,338 @@ class GRUTrafficModel(nn.Module):
 
 
 def validate_horizon(horizon_minutes: int) -> int:
-    if not isinstance(horizon_minutes, int) or horizon_minutes < 15 or horizon_minutes % 15:
-        raise ValueError('horizon_minutes must be a positive multiple of 15')
+    if type(horizon_minutes) is not int or horizon_minutes not in SUPPORTED_HORIZONS:
+        raise ValueError('horizon_minutes must be 15, 30 or 60')
     return horizon_minutes // INTERVAL_MINUTES
 
 
 def read_site_series(csv_path: str | Path, scats_site: str | int):
-    """Read a single site, rejecting duplicate/invalid dates and invalid volumes.
+    """Load real-valued observations, skipping missing cells (not imputing zero).
 
-    Incomplete 15-minute sequences are skipped at window construction time.
-    Data cleaning/imputation remains Darren's responsibility.
+    Any duplicate timestamp, including a repeated missing value, is an error.
+    Gaps are retained implicitly in timestamps; only full windows are used.
     """
     site = str(scats_site).strip()
-    result = {}
-    with open(csv_path, encoding='utf-8-sig', newline='') as handle:
+    if not site:
+        raise ValueError('SCATS site is required')
+    points = {}
+    seen = set()
+    with open(csv_path, newline='', encoding='utf-8-sig') as handle:
         reader = csv.DictReader(handle)
         required = {'scats_site', 'datetime', 'traffic_volume_15min'}
         if not required.issubset(reader.fieldnames or []):
             raise ValueError(f'CSV requires columns {sorted(required)}')
-        for line_num, row in enumerate(reader, start=2):
+        for line_number, row in enumerate(reader, start=2):
             if str(row['scats_site']).strip() != site:
                 continue
-            timestamp = datetime.fromisoformat(row['datetime'].strip())
-            if timestamp.tzinfo is not None:
-                raise ValueError('Use local ISO timestamps without timezone offsets')
-            if timestamp.minute % 15 or timestamp.second or timestamp.microsecond:
-                raise ValueError(f'Non-quarter-hour timestamp at CSV row {line_num}')
-            value = float(row['traffic_volume_15min'])
+            raw_time = (row['datetime'] or '').strip()
+            try:
+                timestamp = datetime.fromisoformat(raw_time)
+            except ValueError as exc:
+                raise ValueError(f'Invalid timestamp at CSV row {line_number}') from exc
+            if timestamp.tzinfo is not None or timestamp.minute % 15 or timestamp.second or timestamp.microsecond:
+                raise ValueError(f'Invalid 15-minute local timestamp at CSV row {line_number}')
+            if timestamp in seen:
+                raise ValueError(f'Duplicate timestamp {timestamp.isoformat()} for SCATS site {site}')
+            seen.add(timestamp)
+            raw_value = (row['traffic_volume_15min'] or '').strip()
+            if raw_value.lower() in {'', 'nan', 'na', 'null', 'none'}:
+                continue
+            try:
+                value = float(raw_value)
+            except ValueError as exc:
+                raise ValueError(f'Invalid traffic count at CSV row {line_number}') from exc
             if not math.isfinite(value) or value < 0:
-                raise ValueError(f'Invalid traffic count at CSV row {line_num}')
-            if timestamp in result:
-                raise ValueError(f'Duplicate timestamp {timestamp.isoformat()} for site {site}')
-            result[timestamp] = value
-    if not result:
+                raise ValueError(f'Invalid traffic count at CSV row {line_number}')
+            points[timestamp] = value
+    if not seen:
         raise ValueError(f'No records found for SCATS site {site}')
-    return sorted(result.items())
+    if not points:
+        raise ValueError(f'All observations are missing for SCATS site {site}')
+    return sorted(points.items())
 
 
 def build_windows(series, lookback: int, horizon_steps: int):
-    """Return (last_observation_time, target_time, past_volumes, target).
+    """Return (as_of, target_time, historical_values, target_value).
 
-    Every required time step, including the prediction horizon, must exist.
-    This prevents a missing observation from being treated as a 15-minute step.
+    Requires each historical 15-minute input and the target to exist. Future
+    intermediate timestamps are not inputs, matching shared make_windows.
     """
-    if lookback < 1:
-        raise ValueError('lookback must be positive')
+    if lookback < 1 or horizon_steps < 1:
+        raise ValueError('lookback and horizon_steps must be positive')
     points = dict(series)
-    samples = []
     delta = timedelta(minutes=INTERVAL_MINUTES)
-    for target_time, target in series:
+    samples = []
+    for target_time, target_value in series:
         as_of = target_time - horizon_steps * delta
-        inputs = [as_of - (lookback - 1 - i) * delta for i in range(lookback)]
-        required = inputs + [as_of + i*delta for i in range(1, horizon_steps + 1)]
-        if not all(t in points for t in required):
-            continue
-        samples.append((as_of, target_time, [points[t] for t in inputs], target))
+        input_times = [as_of - (lookback - 1 - i)*delta for i in range(lookback)]
+        if all(t in points for t in input_times):
+            samples.append((as_of, target_time, [points[t] for t in input_times], target_value))
     return samples
 
 
-def _mae_rmse(predicted, actual):
-    if not actual: return {'mae': None, 'rmse': None, 'count': 0}
-    errs = [p-a for p, a in zip(predicted, actual)]
-    return {'mae': sum(abs(x) for x in errs)/len(errs),
-            'rmse': math.sqrt(sum(x*x for x in errs)/len(errs)),
-            'count': len(errs)}
+def _metrics(predicted, actual):
+    if len(actual) != len(predicted) or not actual:
+        raise ValueError('predicted and actual must be matching nonempty sequences')
+    errors = [p-a for p,a in zip(predicted, actual)]
+    rmse = math.sqrt(sum(e*e for e in errors)/len(errors))
+    observed_range = max(actual) - min(actual)
+    return {
+        'count': len(actual),
+        'mae': sum(abs(e) for e in errors)/len(errors),
+        'rmse': rmse,
+        'nrmse': (rmse/observed_range if observed_range else None),
+        'nrmse_normalisation': 'actual_range',
+    }
 
 
-def train_gru(processed_csv: str | Path, output_folder: str | Path, settings: TrainingSettings):
-    """Train with a time-ordered 70/15/15 target-time split.
+def _shared_scaler_path(csv_path, scaler_path):
+    if scaler_path is not None:
+        resolved = Path(scaler_path)
+        if not resolved.exists():
+            raise FileNotFoundError(f'Shared scaler file not found: {resolved}')
+        return resolved
+    candidate = Path(csv_path).parent / 'scaler.json'
+    if candidate.exists():
+        return candidate
+    # Never silently use a different split/scaler for the actual SCATS file.
+    if Path(csv_path).name.lower() == 'scats_15min.csv':
+        raise FileNotFoundError(f'Real SCATS training requires shared scaler.json alongside {csv_path}')
+    return None
 
-    Scaling is fitted exclusively on TRAINING HISTORY. Validation and test
-    input windows may use earlier observed values, which is legitimate.
-    """
+
+def _prepare_shared(processed_csv, site, settings, scaler_path):
+    """Use the EXACT preprocessing windows used by the group's LSTM model."""
+    from data_processing.dataset import (SPLIT_DAYS, load_scaler, load_series,
+                                         make_windows, inverse_minmax)
+    config_file = Path(processed_csv).parent / 'split_config.json'
+    if config_file.is_file():
+        expected = {k: [str(a.date()), str(b.date())] for k,(a,b) in SPLIT_DAYS.items()}
+        if json.loads(config_file.read_text(encoding='utf-8')) != expected:
+            raise ValueError('split_config.json disagrees with data_processing.dataset.SPLIT_DAYS')
+    scaler = load_scaler(scaler_path)
+    if (scaler.get('method') != 'minmax' or scaler.get('fitted_on') != 'train'
+            or scaler['max'] <= scaler['min']):
+        raise ValueError('Shared scaler must be a valid train-only minmax scaler')
+    df = load_series(processed_csv)
+    site_num = int(site)
+    if (df['scats_site'] == site_num).sum() == 0:
+        raise ValueError(f'No SCATS data for site {site_num}')
+    site_df = df.loc[df['scats_site'] == site_num]
+    splits = {}
+    for name in ('train','val','test'):
+        xs, ys, meta = make_windows(site_df, name, scaler,
+                                   lags=settings.lookback,
+                                   horizon=settings.horizon_minutes//INTERVAL_MINUTES,
+                                   sites={site_num})
+        if len(xs) == 0:
+            raise ValueError(f'No complete GRU {name} windows for SCATS site {site_num}')
+        splits[name] = (torch.tensor(xs, dtype=torch.float32).unsqueeze(-1),
+                        torch.tensor(ys, dtype=torch.float32),
+                        [t.to_pydatetime() for t in meta['datetime']])
+    return splits, scaler, (lambda values: inverse_minmax(values, scaler)), 'shared_calendar_days'
+
+
+def _prepare_standalone(processed_csv, site, settings):
+    """For existing synthetic unit tests only; not for real A2B comparisons."""
+    series = read_site_series(processed_csv, site)
+    if len(series) < 60:
+        raise ValueError('Need at least 60 observations for a standalone baseline')
+    train_cut = int(len(series)*0.70)
+    valid_cut = int(len(series)*0.85)
+    start_val = series[train_cut][0]
+    start_test = series[valid_cut][0]
+    train_values = [v for _,v in series[:train_cut]]
+    minimum, maximum = min(train_values), max(train_values)
+    if maximum <= minimum:
+        raise ValueError('Cannot scale a constant training series')
+    scaler = {'method':'minmax','fitted_on':'train', 'min':minimum, 'max':maximum}
+    def scale(v): return (v-minimum)/(maximum-minimum)
+    def inverse(values): return [v*(maximum-minimum)+minimum for v in values]
+    windows = build_windows(series, settings.lookback, settings.horizon_minutes//INTERVAL_MINUTES)
+    parts = {'train':[], 'val':[], 'test':[]}
+    for window in windows:
+        target_time = window[1]
+        name = 'train' if target_time < start_val else ('val' if target_time < start_test else 'test')
+        parts[name].append(window)
+    splits = {}
+    for name, items in parts.items():
+        if not items:
+            raise ValueError(f'No complete {name} data windows')
+        splits[name] = (torch.tensor([[[scale(v)] for v in w[2]] for w in items], dtype=torch.float32),
+                        torch.tensor([scale(w[3]) for w in items], dtype=torch.float32),
+                        [w[1] for w in items])
+    return splits, scaler, inverse, 'standalone_test_only'
+
+
+def train_gru(processed_csv: str | Path, output_folder: str | Path,
+              settings: TrainingSettings, scaler_path: str | Path | None = None):
+    """Train one GRU using the shared data split, unless testing a synthetic CSV."""
+    settings.validate()
+    settings.site = str(settings.site)
     torch.set_num_threads(min(torch.get_num_threads(), 2))
     random.seed(settings.seed)
     torch.manual_seed(settings.seed)
-    horizon_steps = validate_horizon(settings.horizon_minutes)
-    series = read_site_series(processed_csv, settings.site)
-    if len(series) < 60:
-        raise ValueError('Need at least 60 observations for a meaningful baseline split')
-    train_cut = int(len(series) * .70)
-    valid_cut = int(len(series) * .85)
-    training_vals = [v for _,v in series[:train_cut]]
-    mean = sum(training_vals)/len(training_vals)
-    std = math.sqrt(sum((v-mean)**2 for v in training_vals)/len(training_vals)) or 1.0
-    first_val_timestamp = series[train_cut][0]
-    first_test_timestamp = series[valid_cut][0]
-    windows = build_windows(series, settings.lookback, horizon_steps)
-    train = [w for w in windows if w[1] < first_val_timestamp]
-    valid = [w for w in windows if first_val_timestamp <= w[1] < first_test_timestamp]
-    test = [w for w in windows if w[1] >= first_test_timestamp]
-    if not all((train, valid, test)):
-        raise ValueError('Not enough contiguous data in all chronological splits')
-
-    def to_dataset(items):
-        xs = torch.tensor([[[ (v-mean)/std ] for v in w[2]] for w in items], dtype=torch.float32)
-        ys = torch.tensor([(w[3]-mean)/std for w in items], dtype=torch.float32)
-        return TensorDataset(xs, ys)
-
-    train_dl = DataLoader(to_dataset(train), batch_size=settings.batch_size, shuffle=True)
-    valid_x, valid_y = to_dataset(valid).tensors
+    shared_path = _shared_scaler_path(processed_csv, scaler_path)
+    if shared_path:
+        splits, scaler, inverse, split_method = _prepare_shared(
+            processed_csv, settings.site, settings, shared_path)
+    else:
+        splits, scaler, inverse, split_method = _prepare_standalone(
+            processed_csv, settings.site, settings)
+    train_x, train_y, _ = splits['train']
+    val_x, val_y, _ = splits['val']
+    train_loader = DataLoader(TensorDataset(train_x,train_y),
+                              batch_size=settings.batch_size, shuffle=True)
     model = GRUTrafficModel(settings.hidden_size)
     optimizer = torch.optim.Adam(model.parameters(), lr=settings.learning_rate)
-    loss_fn = nn.MSELoss()
-    best_loss, best_state, stale = float('inf'), None, 0
-    loss_history = []
-    for epoch in range(settings.epochs):
+    objective = nn.MSELoss()
+    best_loss, best_weights, stale = float('inf'), None, 0
+    history = []
+    started = time.perf_counter()
+    for epoch in range(1, settings.epochs+1):
         model.train()
-        for xs, ys in train_dl:
+        running = 0.0
+        for xs,ys in train_loader:
             optimizer.zero_grad()
-            loss = loss_fn(model(xs), ys)
+            loss = objective(model(xs),ys)
             loss.backward()
             optimizer.step()
+            running += loss.item()*len(xs)
         model.eval()
         with torch.no_grad():
-            validation_loss = loss_fn(model(valid_x), valid_y).item()
-        loss_history.append({'epoch': epoch+1, 'validation_mse_scaled': validation_loss})
-        if validation_loss < best_loss - 1e-8:
-            best_loss, stale = validation_loss, 0
-            best_state = {k:v.detach().clone() for k,v in model.state_dict().items()}
+            val_loss = objective(model(val_x),val_y).item()
+        history.append({'epoch':epoch,
+                        'training_mse_scaled':running/len(train_y),
+                        'validation_mse_scaled':val_loss})
+        if val_loss < best_loss - 1e-8:
+            best_loss, stale = val_loss, 0
+            best_weights = {k:v.detach().cpu().clone() for k,v in model.state_dict().items()}
         else:
             stale += 1
         if stale >= settings.patience:
             break
-    if best_state is None: raise RuntimeError('Training did not complete')
-    model.load_state_dict(best_state)
+    training_seconds = time.perf_counter()-started
+    if best_weights is None:
+        raise RuntimeError('No valid GRU checkpoint was produced')
+    model.load_state_dict(best_weights)
+    model.eval()
 
-    def evaluate(items):
-        x, _ = to_dataset(items).tensors
-        model.eval()
+    def evaluate(name):
+        inputs, labels, times = splits[name]
+        started_prediction = time.perf_counter()
         with torch.no_grad():
-            pred = [max(0.0, float(v)*std + mean) for v in model(x).tolist()]
-        return _mae_rmse(pred, [w[3] for w in items])
+            scaled = model(inputs).tolist()
+        prediction_seconds = time.perf_counter()-started_prediction
+        predicted = [max(0.0,float(v)) for v in inverse(scaled)]
+        actual = [float(v) for v in inverse(labels.tolist())]
+        results = _metrics(predicted, actual)
+        results['prediction_time_seconds_total'] = prediction_seconds
+        results['prediction_time_seconds_per_sample'] = prediction_seconds/len(predicted)
+        return results, list(zip(times,actual,predicted))
 
+    validation_metrics, _ = evaluate('val')
+    test_metrics, predictions = evaluate('test')
     output_dir = Path(output_folder)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    filename = f'gru_site_{settings.site}_h{settings.horizon_minutes}'
-    checkpoint_path = output_dir / f'{filename}.pt'
-    metadata_path = output_dir / f'{filename}.json'
-    torch.save(best_state, checkpoint_path)
+    output_dir.mkdir(parents=True,exist_ok=True)
+    prefix = f'gru_site_{settings.site}_h{settings.horizon_minutes}_s{settings.lookback}'
+    weights = output_dir/f'{prefix}.pt'
+    metadata_file = output_dir/f'{prefix}.json'
+    prediction_file = output_dir/f'{prefix}_test_predictions.csv'
+    torch.save(best_weights,weights)
+    with prediction_file.open('w',encoding='utf-8',newline='') as handle:
+        writer = csv.writer(handle)
+        writer.writerow(['scats_site','target_datetime','actual_vehicles_15min','predicted_vehicles_15min'])
+        writer.writerows((settings.site,t.isoformat(),actual,predicted)
+                         for t,actual,predicted in predictions)
     metadata = {
-        'settings': asdict(settings), 'training_mean': mean, 'training_std': std,
-        'train_samples': len(train), 'validation_samples': len(valid),
-        'test_samples': len(test), 'train_end': series[train_cut-1][0].isoformat(),
-        'validation_start': first_val_timestamp.isoformat(),
-        'test_start': first_test_timestamp.isoformat(),
-        'validation_metrics': evaluate(valid), 'test_metrics': evaluate(test),
-        'loss_history': loss_history,
-        'prediction_semantics': 'as_of_time + horizon_minutes',
-        'output_units': 'vehicles per 15 minutes',
-        'note': 'Baseline; test metrics must not be used for hyperparameter selection',
+        'model_type':'GRU', 'scats_site':settings.site,
+        'settings':asdict(settings), 'scaler':scaler,
+        'split_method':split_method,
+        'training_samples':len(train_y), 'validation_samples':len(val_y),
+        'test_samples':len(splits['test'][1]),
+        'training_time_seconds':training_seconds,
+        'best_validation_mse_scaled':best_loss,
+        'validation_metrics':validation_metrics, 'test_metrics':test_metrics,
+        'loss_history':history,
+        'prediction_semantics':'as_of_time + horizon_minutes',
+        'output_units':'vehicles per 15-minute interval',
+        'note':'Do not tune using test metrics; test dataset is held out.',
     }
-    metadata_path.write_text(json.dumps(metadata, indent=2), encoding='utf-8')
-    return {'weights_path': str(checkpoint_path), 'metadata_path': str(metadata_path),
-            'validation': metadata['validation_metrics'], 'test': metadata['test_metrics']}
+    metadata_file.write_text(json.dumps(metadata,indent=2),encoding='utf-8')
+    return {'weights_path':str(weights), 'metadata_path':str(metadata_file),
+            'test_predictions_path':str(prediction_file),
+            'training_time_seconds':training_seconds,
+            'validation':validation_metrics,'test':test_metrics}
 
 
 def predict_gru(scats_site: str | int, as_of_time: str | datetime,
                 horizon_minutes: int, processed_csv: str | Path,
-                model_dir: str | Path = 'saved_models') -> float:
-    """Predict count at as_of + horizon, given historical observations through as_of.
-
-    For a trained historical model this requires observed inputs at `as_of`.
-    An arbitrary future date with no history will raise ValueError.
-    """
+                model_dir: str | Path = 'saved_models',
+                sequence_length: int = 8,
+                scaler_path: str | Path | None = None) -> float:
+    """Predict a site's future 15-minute count from available observed history."""
     validate_horizon(horizon_minutes)
     site = str(scats_site).strip()
     root = Path(model_dir)
-    prefix = f'gru_site_{site}_h{horizon_minutes}'
-    metadata = json.loads((root / f'{prefix}.json').read_text(encoding='utf-8'))
-    cfg = metadata['settings']
-    as_of = (datetime.fromisoformat(as_of_time) if isinstance(as_of_time, str) else as_of_time)
-    if as_of.tzinfo is not None: raise ValueError('as_of_time must be a naive local timestamp')
-    observations = dict(read_site_series(processed_csv, site))
-    sequence = [as_of - timedelta(minutes=INTERVAL_MINUTES * i) for i in reversed(range(cfg['lookback']))]
-    if any(t not in observations for t in sequence):
-        raise ValueError('Insufficient contiguous historical traffic observations for this time')
-    mean, std = metadata['training_mean'], metadata['training_std']
-    x = torch.tensor([[[ (observations[t]-mean)/std ] for t in sequence]], dtype=torch.float32)
-    model = GRUTrafficModel(cfg['hidden_size'])
-    model.load_state_dict(torch.load(root / f'{prefix}.pt', map_location='cpu', weights_only=True))
+    prefix = f'gru_site_{site}_h{horizon_minutes}_s{sequence_length}'
+    metadata_file = root/f'{prefix}.json'
+    weight_file = root/f'{prefix}.pt'
+    if not metadata_file.exists() or not weight_file.exists():
+        raise FileNotFoundError(f'No GRU model trained for site={site}, horizon={horizon_minutes}, sequence={sequence_length}')
+    metadata = json.loads(metadata_file.read_text(encoding='utf-8'))
+    if (metadata['scats_site'] != site or
+            metadata['settings']['horizon_minutes'] != horizon_minutes or
+            metadata['settings']['lookback'] != sequence_length):
+        raise ValueError('Saved GRU model does not match the requested settings')
+    as_of = datetime.fromisoformat(as_of_time) if isinstance(as_of_time,str) else as_of_time
+    if not isinstance(as_of,datetime) or as_of.tzinfo is not None or as_of.minute%15 or as_of.second or as_of.microsecond:
+        raise ValueError('as_of_time must be a 15-minute aligned naive local datetime')
+    observations = dict(read_site_series(processed_csv,site))
+    required = [as_of-timedelta(minutes=15*i) for i in reversed(range(sequence_length))]
+    if any(t not in observations for t in required):
+        raise ValueError('Insufficient nonmissing historical observations for this time')
+    scaler = metadata['scaler']
+    if scaler_path is not None and json.loads(Path(scaler_path).read_text(encoding='utf-8')) != scaler:
+        raise ValueError('Provided scaler differs from the scaler used for training')
+    minimum,maximum = scaler['min'],scaler['max']
+    x = torch.tensor([[[ (observations[t]-minimum)/(maximum-minimum)] for t in required]],dtype=torch.float32)
+    model = GRUTrafficModel(metadata['settings']['hidden_size'])
+    model.load_state_dict(torch.load(weight_file,map_location='cpu',weights_only=True))
     model.eval()
     with torch.no_grad():
-        y = model(x).item() * std + mean
-    return max(0., float(y))
+        output = model(x).item()*(maximum-minimum)+minimum
+    return max(0.0,float(output))
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Train or infer a one-site A2B GRU baseline')
-    parser.add_argument('command', choices=['train', 'predict'])
-    parser.add_argument('--csv', required=True, help='Processed SCATS CSV path')
-    parser.add_argument('--site', required=True)
-    parser.add_argument('--horizon', type=int, default=15)
-    parser.add_argument('--models-dir', default='saved_models')
-    parser.add_argument('--lookback', type=int, default=8)
-    parser.add_argument('--epochs', type=int, default=30)
-    parser.add_argument('--time', help='Forecast origin: 2006-10-15T10:00:00')
+    parser = argparse.ArgumentParser(description='Train or predict a site-specific A2B GRU')
+    parser.add_argument('command',choices=['train','predict'])
+    parser.add_argument('--csv',required=True)
+    parser.add_argument('--site',required=True)
+    parser.add_argument('--horizon',type=int,default=15)
+    parser.add_argument('--models-dir',default='saved_models')
+    parser.add_argument('--lookback','--sequence-length',dest='lookback',type=int,default=8)
+    parser.add_argument('--epochs',type=int,default=30)
+    parser.add_argument('--scaler',default=None,help='Optional path to shared scaler.json')
+    parser.add_argument('--time',help='Forecast origin, e.g. 2006-10-27T12:00:00')
     args = parser.parse_args()
     if args.command == 'train':
-        result = train_gru(args.csv, args.models_dir,
-                           TrainingSettings(site=args.site, horizon_minutes=args.horizon,
-                                            lookback=args.lookback, epochs=args.epochs))
-        print(json.dumps(result, indent=2))
+        result = train_gru(args.csv,args.models_dir,
+                           TrainingSettings(site=args.site,horizon_minutes=args.horizon,
+                                            lookback=args.lookback,epochs=args.epochs),
+                           scaler_path=args.scaler)
+        print(json.dumps(result,indent=2))
     else:
-        if not args.time: parser.error('predict requires --time')
-        result = predict_gru(args.site, args.time, args.horizon, args.csv, args.models_dir)
-        print(json.dumps({'scats_site': args.site, 'as_of': args.time,
-                          'horizon_minutes': args.horizon,
-                          'predicted_vehicles_per_15min': result}, indent=2))
+        if not args.time:
+            parser.error('predict requires --time')
+        prediction = predict_gru(args.site,args.time,args.horizon,args.csv,
+                                 args.models_dir,sequence_length=args.lookback,
+                                 scaler_path=args.scaler)
+        print(json.dumps({'scats_site':args.site,'as_of':args.time,
+                          'horizon_minutes':args.horizon,
+                          'predicted_vehicles_per_15min':prediction},indent=2))
 
 
-if __name__ == '__main__':
+if __name__=='__main__':
     main()
