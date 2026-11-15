@@ -1,0 +1,137 @@
+from_site,to_site,distance_km,road,link_type,confidence
+970,2846,3.042,High St / High Street Rd,direct,medium
+970,3685,1.4,Warrigal Rd,direct,high
+2000,3682,1.62,Warrigal Rd,direct,high
+2000,3685,0.335,Warrigal Rd,direct,high
+2000,3812,4.54,Camberwell Rd + Toorak Rd,junction,medium
+2000,4043,3.69,Toorak Rd,direct,high
+2200,3126,1.253,Union Rd / Warrigal Rd,direct,high
+2200,4063,1.603,Whitehorse Rd / Maroondah Hwy,direct,high
+2820,2825,2.892,Eastern Fwy,direct,medium
+2820,3662,1.598,Princess St,direct,high
+2825,2820,2.892,Eastern Fwy,direct,medium
+2825,2827,1.451,Eastern Fwy,direct,medium
+2825,4030,1.003,Burke Rd,direct,high
+2827,2825,1.451,Eastern Fwy,direct,medium
+2827,4051,1.548,Bulleen Rd,direct,high
+2846,970,3.042,High St / High Street Rd,direct,medium
+2846,4043,2.025,Burke Rd + High St (Glen Iris),junction,medium
+3001,3002,0.37,Barkers Rd,direct,high
+3001,3662,0.769,High St (Kew),direct,high
+3001,4262,1.012,Church St,direct,high
+3001,4821,1.24,Victoria St / Barkers Rd,direct,high
+3002,3001,0.37,Barkers Rd,direct,high
+3002,3662,0.7,Denmark St,direct,high
+3002,4035,2.796,Barkers Rd,direct,high
+3002,4263,0.887,Power St,direct,high
+3120,3122,0.628,Canterbury Rd,direct,high
+3120,4035,0.537,Burke Rd,direct,high
+3120,4040,1.124,Burke Rd,direct,high
+3120,4266,1.481,Rathmines Rd + Auburn Rd,junction,medium
+3122,3120,0.628,Canterbury Rd,direct,high
+3122,3127,1.21,Canterbury Rd,direct,high
+3126,2200,1.253,Union Rd / Warrigal Rd,direct,high
+3126,3127,1.829,Canterbury Rd,direct,high
+3126,3682,1.089,Warrigal Rd,direct,high
+3127,3122,1.21,Canterbury Rd,direct,high
+3127,3126,1.829,Canterbury Rd,direct,high
+3127,4063,1.228,Balwyn Rd,direct,high
+3180,4051,1.247,Doncaster Rd,direct,high
+3180,4057,0.977,Balwyn Rd,direct,high
+3662,2820,1.598,Princess St,direct,high
+3662,3001,0.769,High St (Kew),direct,high
+3662,3002,0.7,Denmark St,direct,high
+3662,4324,0.823,Cotham Rd,direct,high
+3662,4335,0.749,High St (Kew),direct,high
+3682,2000,1.62,Warrigal Rd,direct,high
+3682,3126,1.089,Warrigal Rd,direct,high
+3682,3804,3.059,Riversdale Rd,direct,high
+3685,970,1.4,Warrigal Rd,direct,high
+3685,2000,0.335,Warrigal Rd,direct,high
+3804,3682,3.059,Riversdale Rd,direct,high
+3804,3812,0.445,Trafalgar Rd,direct,high
+3804,4040,0.622,Riversdale Rd,direct,high
+3812,2000,4.54,Camberwell Rd + Toorak Rd,junction,medium
+3812,3804,0.445,Trafalgar Rd,direct,high
+3812,4040,0.7,Camberwell Rd,direct,high
+3812,4043,1.799,Camberwell Rd + Toorak Rd,junction,medium
+4030,2825,1.003,Burke Rd,direct,high
+4030,4032,0.744,Burke Rd,direct,high
+4030,4051,0.751,Doncaster Rd,direct,high
+4030,4321,1.21,High St (Kew),direct,high
+4032,4030,0.744,Burke Rd,direct,high
+4032,4034,1.077,Burke Rd,direct,high
+4032,4057,1.834,Belmore Rd,direct,high
+4032,4321,1.077,Harp Rd,direct,high
+4034,4032,1.077,Burke Rd,direct,high
+4034,4035,0.701,Burke Rd,direct,high
+4034,4063,1.833,Whitehorse Rd,direct,high
+4034,4324,2.007,Cotham Rd,direct,high
+4035,3002,2.796,Barkers Rd,direct,high
+4035,3120,0.537,Burke Rd,direct,high
+4035,4034,0.701,Burke Rd,direct,high
+4040,3120,1.124,Burke Rd,direct,high
+4040,3804,0.622,Riversdale Rd,direct,high
+4040,3812,0.7,Camberwell Rd,direct,high
+4040,4043,1.609,Burke Rd,direct,high
+4040,4266,1.346,Burwood Rd,direct,high
+4040,4272,0.801,Riversdale Rd,direct,high
+4043,2000,3.69,Toorak Rd,direct,high
+4043,2846,2.025,Burke Rd + High St (Glen Iris),junction,medium
+4043,3812,1.799,Camberwell Rd + Toorak Rd,junction,medium
+4043,4040,1.609,Burke Rd,direct,high
+4043,4273,0.728,Toorak Rd,direct,high
+4051,2827,1.548,Bulleen Rd,direct,high
+4051,3180,1.247,Doncaster Rd,direct,high
+4051,4030,0.751,Doncaster Rd,direct,high
+4057,3180,0.977,Balwyn Rd,direct,high
+4057,4032,1.834,Belmore Rd,direct,high
+4057,4063,1.066,Balwyn Rd,direct,high
+4063,2200,1.603,Whitehorse Rd / Maroondah Hwy,direct,high
+4063,3127,1.228,Balwyn Rd,direct,high
+4063,4034,1.833,Whitehorse Rd,direct,high
+4063,4057,1.066,Balwyn Rd,direct,high
+4262,3001,1.012,Church St,direct,high
+4262,4263,0.898,Burwood Rd,direct,high
+4262,4821,1.534,Bridge Rd + Burnley St,junction,medium
+4263,3002,0.887,Power St,direct,high
+4263,4262,0.898,Burwood Rd,direct,high
+4263,4264,0.799,Burwood Rd,direct,high
+4263,4270,1.487,Power St + Riversdale Rd,junction,medium
+4263,4812,1.485,Power St + Swan St,junction,medium
+4264,4263,0.799,Burwood Rd,direct,high
+4264,4266,0.834,Burwood Rd,direct,high
+4264,4270,0.694,Glenferrie Rd,direct,high
+4264,4324,1.66,Glenferrie Rd,direct,high
+4266,3120,1.481,Rathmines Rd + Auburn Rd,junction,medium
+4266,4040,1.346,Burwood Rd,direct,high
+4266,4264,0.834,Burwood Rd,direct,high
+4266,4270,1.475,Auburn Rd + Riversdale Rd,junction,medium
+4266,4272,0.985,Auburn Rd + Riversdale Rd,junction,medium
+4270,4263,1.487,Power St + Riversdale Rd,junction,medium
+4270,4264,0.694,Glenferrie Rd,direct,high
+4270,4266,1.475,Auburn Rd + Riversdale Rd,junction,medium
+4270,4272,1.195,Riversdale Rd,direct,high
+4270,4273,2.831,Glenferrie Rd + Toorak Rd,junction,medium
+4270,4812,1.512,Swan St / Riversdale Rd,direct,medium
+4272,4040,0.801,Riversdale Rd,direct,high
+4272,4266,0.985,Auburn Rd + Riversdale Rd,junction,medium
+4272,4270,1.195,Riversdale Rd,direct,high
+4272,4273,1.647,Tooronga Rd,direct,high
+4273,4043,0.728,Toorak Rd,direct,high
+4273,4270,2.831,Glenferrie Rd + Toorak Rd,junction,medium
+4273,4272,1.647,Tooronga Rd,direct,high
+4321,4030,1.21,High St (Kew),direct,high
+4321,4032,1.077,Harp Rd,direct,high
+4321,4335,1.357,High St (Kew),direct,high
+4324,3662,0.823,Cotham Rd,direct,high
+4324,4034,2.007,Cotham Rd,direct,high
+4324,4264,1.66,Glenferrie Rd,direct,high
+4335,3662,0.749,High St (Kew),direct,high
+4335,4321,1.357,High St (Kew),direct,high
+4812,4263,1.485,Power St + Swan St,junction,medium
+4812,4270,1.512,Swan St / Riversdale Rd,direct,medium
+4812,4821,2.429,Burnley St + Swan St,junction,medium
+4821,3001,1.24,Victoria St / Barkers Rd,direct,high
+4821,4262,1.534,Bridge Rd + Burnley St,junction,medium
+4821,4812,2.429,Burnley St + Swan St,junction,medium

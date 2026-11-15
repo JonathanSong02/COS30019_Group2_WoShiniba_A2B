@@ -57,3 +57,18 @@ X_tr = X_tr.reshape(len(X_tr), 12, 1)   # LSTM/GRU input shape, as in the hyswin
 
 ## Open issue: site totals vs the 1500 veh/h capacity
 Summed site totals converted to an hourly rate exceed the conversion PDF's 1500 veh/h capacity **42% of the time** (median 1307, max 5389 veh/h). `routing/travel_time.py` raises `ValueError` above 1500. Per-approach hourly volumes exceed 1500 only 0.65% of the time (max 2345). The group needs to decide which volume feeds the travel-time formula: the approach volume (`scats_15min_by_approach.csv`), or the site total divided by its number of approaches.
+
+## Road graph: `scats_road_edges.csv`
+
+```
+python -m data_processing.build_road_graph
+python -m unittest tests.test_road_graph -v
+```
+
+Columns: `from_site,to_site,distance_km`. There are 136 directed edges (68 two-way roads) covering all 40 sites, and the graph is fully connected.
+
+- **Edges follow real roads, not proximity.** Each link comes from the road names in the SCATS `Location` field and was checked against the VicRoads Boroondara map (`IBM data_Bor.pdf`). The full list, with road names, is `ROAD_LINKS` in `build_road_graph.py`.
+- **All roads are two-way**, so every link appears in both directions.
+- **Distance:** `direct` links (two sites next to each other on one road) use the haversine straight-line distance. `junction` links (the route turns once at an intersection that isn't in our dataset) use an L-shaped north-south plus east-west estimate. Distances are approximations, not measured along road curves.
+- `scats_road_edges_detailed.csv` adds `road`, `link_type` and `confidence`. The 14 `medium` links (orange in `docs/scats_road_graph.png`) are freeway or road-continuation links: Eastern Fwy, Swan St -> Riversdale Rd, the High St (Glen Iris) links, and the junction links. Check these on a street map if they matter for a demo route.
+- **Coordinate offset:** SCATS coordinates are shifted slightly from the true map positions. The shift is about the same for every site, so distances aren't affected much.
