@@ -39,7 +39,7 @@ class GUIBackendTests(unittest.TestCase):
         import gradio as gr
         from gui import app as gui_module
         from main import DEFAULT_ROADS
-        status, routes, details = run_routes(
+        status, routes, details, map_html = run_routes(
             "2000", "3002", "2006-10-20T10:00:00", "GRU", 15,
             8, 5, str(DEFAULT_ROADS), "origin",
             "Clamp to 1500 (research sensitivity only)", "exclude",
@@ -50,9 +50,13 @@ class GUIBackendTests(unittest.TestCase):
         self.assertIn("4264", details["assumptions"]["unavailable_sites"])
         gr.JSON().postprocess(details)  # Previously raised TypeError: Dict key must be str
         gr.Dataframe(headers=gui_module.ROUTE_HEADERS).postprocess(routes)
+        # Map shows the same five routes, and the excluded sites greyed out.
+        self.assertIn("<iframe", map_html)
+        self.assertEqual(map_html.count("&quot;rank&quot;:"), 5)
+        gr.HTML().postprocess(map_html)
 
     def test_missing_verified_graph_error(self):
-        status, routes, details = run_routes(
+        status, routes, details, map_html = run_routes(
             "2000", "3002", "2006-10-20T10:00:00", "GRU", 15,
             8, 5, "missing_verified_links_for_test.csv", "origin",
             "Reject values above 1500 veh/hour")
@@ -60,6 +64,8 @@ class GUIBackendTests(unittest.TestCase):
         self.assertIn("Missing verified road links", status)
         self.assertEqual(routes, [])
         self.assertEqual(details, {})
+        # The map still renders the sites so the tab is never blank.
+        self.assertIn("<iframe", map_html)
 
 
 if __name__ == "__main__":

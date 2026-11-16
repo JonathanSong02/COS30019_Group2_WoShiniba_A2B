@@ -16,6 +16,7 @@ from pathlib import Path
 import gradio as gr
 
 import main as backend
+from gui import route_map
 
 ROOT = Path(__file__).resolve().parents[1]
 ROADS_DEFAULT = backend.DEFAULT_ROADS
@@ -32,6 +33,13 @@ def _site_id(value) -> int:
     return site
 
 
+def _safe_site(value):
+    try:
+        return _site_id(value)
+    except ValueError:
+        return None
+
+
 def known_sites() -> list[str]:
     """Get SCATS IDs from processed metadata, not from location TFM identifiers."""
     if not backend.DEFAULT_SITES.is_file():
@@ -41,6 +49,24 @@ def known_sites() -> list[str]:
         return [str(x) for x in sorted(sites)]
     except (OSError, ValueError, KeyError):
         return ["2000"]
+
+
+def route_map_html(road_file=None, routes=(), **payload_kwargs) -> str:
+    """Interactive OpenStreetMap view (iframe HTML). Never raises: the map is
+    supporting visualisation, so a map problem must not hide route results."""
+    try:
+        coords = backend.load_site_coordinates(backend.DEFAULT_SITES)
+        try:
+            links = backend.load_verified_road_links(str(road_file or ROADS_DEFAULT))
+        except (FileNotFoundError, OSError, ValueError):
+            links = []
+        payload = route_map.build_map_payload(
+            coords, links, routes, site_names=route_map.load_site_names(backend.DEFAULT_SITES),
+            **payload_kwargs,
+        )
+        return route_map.build_map_iframe(payload)
+    except (FileNotFoundError, OSError, ValueError, KeyError, TypeError) as exc:
+        return f"<p><b>Map unavailable:</b> {exc}</p>"
 
 
 def run_prediction(site, as_of_time, model, horizon_minutes, sequence_length):
@@ -75,7 +101,11 @@ def run_prediction(site, as_of_time, model, horizon_minutes, sequence_length):
 
 def run_routes(origin, destination, as_of_time, model, horizon_minutes,
                sequence_length, route_count, road_file, flow_site, capacity_policy, missing_site_policy="reject"):
-    """Route callback. Requires verified road connections and per-site models."""
+    """Route callback. Requires verified road connections and per-site models.
+
+    Returns (status, route rows, details JSON, map HTML).
+    """
+    start = end = None
     try:
         start, end = _site_id(origin), _site_id(destination)
         when = backend.valid_as_of(str(as_of_time).strip())
@@ -84,13 +114,22 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
         selected_model = VALID_MODELS[model]
         horizon, lookback = int(horizon_minutes), int(sequence_length)
         policy = "reject" if str(capacity_policy).startswith("Reject") else "clamp"
+        site_flows: dict[int, float] = {}
+
+        def predictor(site, as_of):
+            # Same call as before; also remember each site's forecast so the
+            # map can show it on hover (no extra model runs).
+            value = backend.predict_traffic(
+                site, as_of, model_name=selected_model,
+                horizon_minutes=horizon, sequence_length=lookback,
+            )
+            site_flows[int(site)] = float(value)
+            return value
+
         result = backend.compute_traffic_routes(
             origin=start, destination=end, as_of_time=when,
             verified_road_links=links, site_coords=coords,
-            predictor=lambda site, as_of: backend.predict_traffic(
-                site, as_of, model_name=selected_model,
-                horizon_minutes=horizon, sequence_length=lookback,
-            ),
+            predictor=predictor,
             k=int(route_count), flow_site=str(flow_site).lower(),
             hourly_policy="steady_4x", capacity_policy=policy,
             missing_site_policy=missing_site_policy,
@@ -129,9 +168,18 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
                 },
             },
         }
-        return status, rows, display_result
+        map_html = route_map_html(
+            road_file, result["routes"],
+            site_flows_15min=site_flows,
+            unavailable_sites=result["assumptions"]["unavailable_sites"].keys(),
+            clamped_sites=result["assumptions"]["capacity_clamped_sites"],
+            origin=start, destination=end,
+            model_label=f"{model} · +{horizon} min after {when:%a %d %b %Y %H:%M}",
+        )
+        return status, rows, display_result, map_html
     except (FileNotFoundError, OSError, ValueError, TypeError, KeyError, NotImplementedError) as exc:
-        return f"⚠️ **Route calculation unavailable:** {exc}", [], {}
+        return (f"⚠️ **Route calculation unavailable:** {exc}", [], {},
+                route_map_html(road_file, origin=start, destination=end))
 
 
 def build_app() -> gr.Blocks:
@@ -209,23 +257,32 @@ def build_app() -> gr.Blocks:
                             value="reject",
                         )
                         route_btn = gr.Button("Calculate routes", variant="primary")
-                    with gr.Column():
+                    with gr.Column(scale=2):
                         route_status = gr.Markdown("Awaiting verified road links and relevant saved model files.")
+                        route_map_view = gr.HTML(
+                            value=route_map_html(origin=_safe_site(start_site), destination=_safe_site(dest_site)),
+                            label="Route map (OpenStreetMap)")
                         route_table = gr.Dataframe(headers=ROUTE_HEADERS, datatype=["number", "str", "number", "number"],
                                                     value=[], interactive=False, label="Route ranking")
-                        route_json = gr.JSON(label="Route calculation details and assumptions")
+                        with gr.Accordion("Route calculation details and assumptions", open=False):
+                            route_json = gr.JSON(label="Details")
                 route_btn.click(
                     fn=run_routes,
                     inputs=[origin, destination, route_time, route_model, route_horizon,
                             route_seq, k, roads, flow_site, capacity, missing_mode],
-                    outputs=[route_status, route_table, route_json],
+                    outputs=[route_status, route_table, route_json, route_map_view],
                 )
                 gr.Markdown(
                     "**Modelling limitations:** `steady_4x` converts one 15-minute model forecast "
                     "to an estimated hourly flow; this is *not* a true four-period forecast. "
                     "The provided flow-to-speed formula assumes at most 1,500 vehicles/hour. "
                     "Map-reviewed road links still have estimated distances and some medium-confidence "
-                    "connections; partial-network results are for integration tests only."
+                    "connections; partial-network results are for integration tests only.\n\n"
+                    "**Map:** SCATS coordinates are shifted by one measured offset (≈168 m north, "
+                    "≈115 m east; see `data/processed/scats_coordinate_offset.json`) so sites sit on "
+                    "their OpenStreetMap intersections. Routes are drawn as straight lines between "
+                    "intersections, not along street curves. The map background needs internet; "
+                    "route calculation itself works offline."
                 )
     return app
 

@@ -1,0 +1,15 @@
+{
+  "dlat": 0.001505,
+  "dlon": 0.001305,
+  "shift_north_m": 167.5,
+  "shift_east_m": 114.7,
+  "method": "Median of (OpenStreetMap - SCATS) differences at 14 signalised intersections. OSM position = node shared by the two named highway ways, read from api.openstreetmap.org /api/0.6/map (mean of nodes for dual carriageways).",
+  "measured_on": "2026-11-17",
+  "samples_file": "data/processed/scats_coordinate_offset_samples.csv",
+  "n_samples": 14,
+  "mean_error_before_m": 202.5,
+  "max_error_before_m": 208.9,
+  "mean_error_after_m": 3.9,
+  "max_error_after_m": 13.4,
+  "applies_to": "Map display only. Routing distances use the original processed coordinates."
+}

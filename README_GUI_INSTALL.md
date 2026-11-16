@@ -28,7 +28,7 @@ The patch adds four GUI backend tests. If the existing 54 are unchanged, you sho
 
 ## Limitations
 
-- No map display yet: route table is only activated when the verified road network exists.
+- Route guidance shows an interactive OpenStreetMap view (Leaflet, no API key): the 40 sites, the road links and the top-5 routes in different colours. Hover a site for its predicted flow, a route for its travel time. Sites are shifted by the measured SCATS offset (`data/processed/scats_coordinate_offset.json`). Routes are straight lines between intersections, and the map background needs internet (routing works offline).
 - Only site 2000 GRU models were previously confirmed; LSTM and Regression Tree may be unavailable.
 - GRU output is one future 15-minute interval, not an hourly vehicle count.
 - The provisional `steady_4x` hourly approximation and origin/destination flow convention must be confirmed/documented for final evaluation.
