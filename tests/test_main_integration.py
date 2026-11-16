@@ -39,6 +39,45 @@ class MainIntegrationTests(unittest.TestCase):
         with self.assertRaisesRegex(FileNotFoundError, 'No model'):
             compute_traffic_routes(101, 105, self.when, self.links, self.coords, missing)
 
+    def test_missing_sites_can_be_excluded_with_clear_warning(self):
+        def predictor(site, when):
+            if site == 103:
+                raise FileNotFoundError("No model for site 103")
+            return 50.0
+        result = compute_traffic_routes(
+            101, 105, self.when, self.links, self.coords, predictor,
+            missing_site_policy="exclude",
+        )
+        self.assertEqual(result["route_count"], 1)
+        self.assertEqual(result["routes"][0]["scats_sites"], [101, 102, 105])
+        self.assertEqual(result["assumptions"]["excluded_road_link_count"], 2)
+        self.assertIn(103, result["assumptions"]["unavailable_sites"])
+        self.assertTrue(result["assumptions"]["network_incomplete"])
+
+    def test_selected_destination_without_model_is_rejected_in_partial_mode(self):
+        def predictor(site, when):
+            if site == 105:
+                raise FileNotFoundError("Missing checkpoint")
+            return 50.0
+        with self.assertRaisesRegex(ValueError, "Selected origin/destination"):
+            compute_traffic_routes(101, 105, self.when, self.links, self.coords,
+                                   predictor, missing_site_policy="exclude")
+
+    def test_invalid_missing_site_policy_rejected(self):
+        with self.assertRaisesRegex(ValueError, "missing_site_policy"):
+            compute_traffic_routes(101, 105, self.when, self.links, self.coords,
+                                   predictor=lambda site, when: 50.0,
+                                   missing_site_policy="fill-with-zero")
+
+    def test_partial_mode_excludes_missing_history_without_imputation(self):
+        def predictor(site, when):
+            if site == 103:
+                raise ValueError("Insufficient nonmissing historical observations for this time")
+            return 50.0
+        result = compute_traffic_routes(101, 105, self.when, self.links, self.coords,
+                                        predictor, missing_site_policy="exclude")
+        self.assertEqual(result["route_count"], 1)
+
     def test_overcapacity_rejected_default(self):
         with self.assertRaisesRegex(ValueError, 'exceeding'):
             compute_traffic_routes(101, 105, self.when, self.links, self.coords,

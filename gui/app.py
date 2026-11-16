@@ -18,7 +18,7 @@ import gradio as gr
 import main as backend
 
 ROOT = Path(__file__).resolve().parents[1]
-ROADS_DEFAULT = ROOT / "data" / "processed" / "scats_road_links.csv"
+ROADS_DEFAULT = backend.DEFAULT_ROADS
 ROUTE_HEADERS = ["Rank", "SCATS route", "Travel time (min)", "Travel time (sec)"]
 VALID_MODELS = {"GRU": "gru", "LSTM": "lstm", "Regression Tree": "regression_tree"}
 
@@ -74,7 +74,7 @@ def run_prediction(site, as_of_time, model, horizon_minutes, sequence_length):
 
 
 def run_routes(origin, destination, as_of_time, model, horizon_minutes,
-               sequence_length, route_count, road_file, flow_site, capacity_policy):
+               sequence_length, route_count, road_file, flow_site, capacity_policy, missing_site_policy="reject"):
     """Route callback. Requires verified road connections and per-site models."""
     try:
         start, end = _site_id(origin), _site_id(destination)
@@ -93,6 +93,7 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
             ),
             k=int(route_count), flow_site=str(flow_site).lower(),
             hourly_policy="steady_4x", capacity_policy=policy,
+            missing_site_policy=missing_site_policy,
         )
         rows = [
             [route["rank"], " → ".join(str(s) for s in route["scats_sites"]),
@@ -101,11 +102,34 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
         ]
         note = ("⚠️ **Sensitivity scenario:** Flow above capacity was clamped. "
                 "Do not report those values as measured traffic. " if result["assumptions"]["capacity_clamped_sites"] else "")
-        status = (f"✅ **Computed {len(rows)} route(s)** using {model} forecasts. "
+        partial = result["assumptions"]["network_incomplete"]
+        if partial:
+            unavailable = sorted(result["assumptions"]["unavailable_sites"])
+            prefix = ("⚠️ **PARTIAL-NETWORK DEVELOPMENT RESULT — not a verified best route on the "
+                      f"full 40-site graph.** Excluded forecast-unavailable SCATS sites: "
+                      f"{', '.join(map(str, unavailable))}. "
+                      f"Excluded {result['assumptions']['excluded_road_link_count']} road-link rows. ")
+        else:
+            prefix = "✅ "
+        status = (prefix + f"**Computed {len(rows)} candidate route(s)** using {model} forecasts. "
                   "Hour flow assumes four identical future 15-minute counts (4× approximation). " + note)
         if not rows:
             status = "⚠️ **No route found** between these verified SCATS intersections. " + status
-        return status, rows, result
+        # Backend uses integer SCATS IDs as dictionary keys, which is valid
+        # Python but not accepted by gr.JSON's strict JSON serialiser.
+        # Convert the GUI payload only; preserve the backend's integer-keyed
+        # results for routing and tests.
+        display_result = {
+            **result,
+            "assumptions": {
+                **result["assumptions"],
+                "unavailable_sites": {
+                    str(site): reason
+                    for site, reason in result["assumptions"]["unavailable_sites"].items()
+                },
+            },
+        }
+        return status, rows, display_result
     except (FileNotFoundError, OSError, ValueError, TypeError, KeyError, NotImplementedError) as exc:
         return f"⚠️ **Route calculation unavailable:** {exc}", [], {}
 
@@ -121,10 +145,12 @@ def build_app() -> gr.Blocks:
             "# Traffic-Based Route Guidance System (TBRGS)\n"
             "**COS30019 · Group 2 · Assignment 2B**  |  Boroondara SCATS data · October 2006"
         )
+        available = len(list(backend.DEFAULT_MODELS.glob("gru_site_*_h15_s8.pt")))
         gr.Markdown(
-            "**Development status:** GRU is trained for SCATS **2000** at 15/30/60-minute "
-            "horizons (8-step history). Other site/model choices require their own trained "
-            "checkpoints. Real route guidance requires Darren's verified road-link CSV."
+            f"**Development status:** GRU checkpoints available for **{available} of {len(sites)}** "
+            "SCATS sites at 15-minute horizon (8-step lookback). Other horizons/models require "
+            "their own checkpoints. Road graph is Darren's **map-reviewed, estimated-distance** "
+            "network; it has not been independently ground-truthed."
         )
         with gr.Tabs():
             with gr.Tab("Traffic prediction"):
@@ -152,9 +178,10 @@ def build_app() -> gr.Blocks:
                 )
             with gr.Tab("Route guidance"):
                 gr.Markdown(
-                    "### Up to five verified routes\n"
-                    "This tab does **not** create roads from coordinates. Route calculations will "
-                    "become available when verified road links and the required per-site ML models exist."
+                    "### Up to five traffic-based candidate routes\n"
+                    "Uses Darren's map-reviewed Boroondara graph with estimated link distances. "
+                    "If model coverage is incomplete, optional partial-network testing excludes "
+                    "the affected sites and cannot guarantee global top-five routes."
                 )
                 with gr.Row():
                     with gr.Column():
@@ -167,7 +194,7 @@ def build_app() -> gr.Blocks:
                         route_horizon = gr.Dropdown(label="Prediction horizon (min)", choices=[15, 30, 60], value=15)
                         route_seq = gr.Number(label="Historical lookback", value=8, precision=0, minimum=1, maximum=96)
                         k = gr.Slider(label="Maximum routes", minimum=1, maximum=5, step=1, value=defaults.get("top_k_routes", 5))
-                        roads = gr.Textbox(label="Verified directed road CSV path", value=str(ROADS_DEFAULT),
+                        roads = gr.Textbox(label="SCATS directed road CSV path (map-reviewed)", value=str(ROADS_DEFAULT),
                                            info="CSV columns: from_site,to_site,distance_km")
                         flow_site = gr.Radio(label="SCATS flow convention (confirm with tutor)",
                                              choices=["origin", "destination"], value=defaults.get("volume_used_for_edge", "origin"))
@@ -175,6 +202,12 @@ def build_app() -> gr.Blocks:
                             "Reject values above 1500 veh/hour",
                             "Clamp to 1500 (research sensitivity only)"],
                             value="Reject values above 1500 veh/hour")
+                        missing_mode = gr.Radio(
+                            label="Missing model forecasts",
+                            choices=[("Stop if any required model is unavailable", "reject"),
+                                     ("Exclude unavailable sites (partial-network test only)", "exclude")],
+                            value="reject",
+                        )
                         route_btn = gr.Button("Calculate routes", variant="primary")
                     with gr.Column():
                         route_status = gr.Markdown("Awaiting verified road links and relevant saved model files.")
@@ -184,14 +217,15 @@ def build_app() -> gr.Blocks:
                 route_btn.click(
                     fn=run_routes,
                     inputs=[origin, destination, route_time, route_model, route_horizon,
-                            route_seq, k, roads, flow_site, capacity],
+                            route_seq, k, roads, flow_site, capacity, missing_mode],
                     outputs=[route_status, route_table, route_json],
                 )
                 gr.Markdown(
                     "**Modelling limitations:** `steady_4x` converts one 15-minute model forecast "
                     "to an estimated hourly flow; this is *not* a true four-period forecast. "
                     "The provided flow-to-speed formula assumes at most 1,500 vehicles/hour. "
-                    "No route is presented as real unless its directed road connections are verified."
+                    "Map-reviewed road links still have estimated distances and some medium-confidence "
+                    "connections; partial-network results are for integration tests only."
                 )
     return app
 

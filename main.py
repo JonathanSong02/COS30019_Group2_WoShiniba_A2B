@@ -29,6 +29,7 @@ from routing.travel_time import (
 ROOT = Path(__file__).resolve().parent
 DEFAULT_CSV = ROOT / "data" / "processed" / "scats_15min.csv"
 DEFAULT_SITES = ROOT / "data" / "processed" / "scats_sites.csv"
+DEFAULT_ROADS = ROOT / "data" / "processed" / "scats_road_edges.csv"  # Darren's map-reviewed graph
 DEFAULT_MODELS = ROOT / "saved_models"
 
 
@@ -166,6 +167,7 @@ def compute_traffic_routes(
     hourly_policy: str = "steady_4x",
     capacity_policy: str = "reject",
     intersection_delay_seconds: float = 30.0,
+    missing_site_policy: str = "reject",
 ) -> dict:
     """Convert per-site predicted 15-min counts to route costs, then rank routes.
 
@@ -179,6 +181,8 @@ def compute_traffic_routes(
         raise ValueError("Only explicit steady_4x hourly approximation is currently supported")
     if capacity_policy not in {"reject", "clamp"}:
         raise ValueError("capacity_policy must be reject or clamp")
+    if missing_site_policy not in {"reject", "exclude"}:
+        raise ValueError("missing_site_policy must be reject or exclude")
     if flow_site not in {"origin", "destination"}:
         raise ValueError("flow_site must be origin or destination")
     if origin not in site_coords or destination not in site_coords:
@@ -190,11 +194,33 @@ def compute_traffic_routes(
             raise ValueError(f"Unknown SCATS site in verified road link: {u}->{v}")
         if type(dist) not in (int, float) or not math.isfinite(dist) or dist <= 0:
             raise ValueError(f"Invalid distance for {u}->{v}")
-    required_sites = sorted({u if flow_site == "origin" else v for u, v, _ in verified_road_links})
+    # The full graph can include sites with no trained model (3685, 4264).
+    # Keep the default strict, but permit an EXPLICIT partial-network experiment.
+    # In partial mode, remove every edge incident to an unavailable site; never
+    # fabricate predictions or use a misleading zero for missing observations.
+    required_sites = (sorted({s for u, v, _ in verified_road_links for s in (u, v)})
+                      if missing_site_policy == "exclude" else
+                      sorted({u if flow_site == "origin" else v
+                              for u, v, _ in verified_road_links}))
     hourly = {}
     clamped_sites = []
+    excluded_sites = {}
     for site in required_sites:
-        volume_15min = float(predictor(site, as_of))
+        try:
+            volume_15min = float(predictor(site, as_of))
+        except FileNotFoundError as exc:
+            if missing_site_policy != "exclude":
+                raise
+            excluded_sites[site] = str(exc)
+            continue
+        except ValueError as exc:
+            # Missing historical observations may make a valid trained model
+            # unavailable for a particular requested time.
+            if (missing_site_policy != "exclude" or
+                    "Insufficient nonmissing historical observations" not in str(exc)):
+                raise
+            excluded_sites[site] = str(exc)
+            continue
         if not math.isfinite(volume_15min) or volume_15min < 0:
             raise ValueError(f"Invalid 15-minute prediction for site {site}")
         hourly_estimate = volume_15min * 4
@@ -210,8 +236,14 @@ def compute_traffic_routes(
             clamped_sites.append(site)
             hourly_estimate = CAPACITY_VEH_PER_HOUR
         hourly[site] = hourly_estimate
+    usable_links = ([ (u, v, d) for u, v, d in verified_road_links
+                       if u not in excluded_sites and v not in excluded_sites]
+                    if missing_site_policy == "exclude" else verified_road_links)
+    if missing_site_policy == "exclude" and (origin in excluded_sites or destination in excluded_sites):
+        raise ValueError("Selected origin/destination has no usable prediction. "
+                         "Choose another site or a date with complete historical data.")
     edges = weights_from_road_links(
-        verified_road_links, hourly,
+        usable_links, hourly,
         flow_site=flow_site, intersection_delay_s=intersection_delay_seconds,
     )
     graph = build_weighted_scats_graph(site_coords, edges)
@@ -233,7 +265,16 @@ def compute_traffic_routes(
             "capacity_policy": capacity_policy,
             "capacity_clamped_sites": clamped_sites,
             "intersection_delay_seconds": intersection_delay_seconds,
-            "road_links": "Caller-supplied verified directed edges; no roads inferred",
+            "road_links": "Caller-supplied map-reviewed directed edges; no roads inferred at runtime",
+            "road_distances": "Estimated straight-line or L-shaped distances, not measured road distance",
+            "missing_site_policy": missing_site_policy,
+            "unavailable_sites": excluded_sites,
+            "source_road_link_count": len(verified_road_links),
+            "usable_road_link_count": len(usable_links),
+            "excluded_road_link_count": len(verified_road_links) - len(usable_links),
+            "network_incomplete": bool(excluded_sites),
+            "route_scope": ("PARTIAL model-covered graph; not globally optimal on full road network"
+                            if excluded_sites else "All supplied graph links eligible"),
         },
     }
 
@@ -259,12 +300,14 @@ def main(argv=None) -> int:
     common(p_route)
     p_route.add_argument("--origin", required=True, type=int)
     p_route.add_argument("--destination", required=True, type=int)
-    p_route.add_argument("--roads", required=True, type=Path, help="Darren's directed road CSV: from_site,to_site,distance_km")
+    p_route.add_argument("--roads", type=Path, default=DEFAULT_ROADS, help="Map-reviewed directed road CSV (default: Darren's scats_road_edges.csv)")
     p_route.add_argument("--sites", type=Path, default=DEFAULT_SITES)
     p_route.add_argument("--top-k", type=int, default=defaults.get("top_k_routes", 5))
     p_route.add_argument("--flow-site", choices=["origin", "destination"], default=defaults.get("volume_used_for_edge", "origin"))
     p_route.add_argument("--hourly-policy", choices=["steady_4x"], required=True)
     p_route.add_argument("--capacity-policy", choices=["reject", "clamp"], default="reject")
+    p_route.add_argument("--missing-site-policy", choices=["reject", "exclude"], default="reject",
+                         help="Exclude unavailable model sites for explicitly partial-network development tests")
     p_route.add_argument("--intersection-delay", type=float, default=defaults.get("controlled_intersection_delay_seconds", 30.0))
     args = parser.parse_args(argv)
     try:
@@ -291,6 +334,7 @@ def main(argv=None) -> int:
                 hourly_policy=args.hourly_policy,
                 capacity_policy=args.capacity_policy,
                 intersection_delay_seconds=args.intersection_delay,
+                missing_site_policy=args.missing_site_policy,
             )
             result["model"] = args.model.upper()
             result["horizon_minutes"] = args.horizon

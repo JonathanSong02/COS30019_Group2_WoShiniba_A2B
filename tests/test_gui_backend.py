@@ -29,6 +29,28 @@ class GUIBackendTests(unittest.TestCase):
         self.assertIsNone(prediction)
         self.assertEqual(details, {})
 
+    def test_gui_uses_darren_road_graph_by_default(self):
+        from gui.app import ROADS_DEFAULT
+        self.assertEqual(ROADS_DEFAULT.name, "scats_road_edges.csv")
+        self.assertTrue(ROADS_DEFAULT.is_file())
+
+    def test_partial_route_json_is_serialisable_by_gradio(self):
+        # Tests the browser output contract, not just Python route calculation.
+        import gradio as gr
+        from gui import app as gui_module
+        from main import DEFAULT_ROADS
+        status, routes, details = run_routes(
+            "2000", "3002", "2006-10-20T10:00:00", "GRU", 15,
+            8, 5, str(DEFAULT_ROADS), "origin",
+            "Clamp to 1500 (research sensitivity only)", "exclude",
+        )
+        self.assertIn("PARTIAL-NETWORK", status)
+        self.assertEqual(len(routes), 5)
+        self.assertIn("3685", details["assumptions"]["unavailable_sites"])
+        self.assertIn("4264", details["assumptions"]["unavailable_sites"])
+        gr.JSON().postprocess(details)  # Previously raised TypeError: Dict key must be str
+        gr.Dataframe(headers=gui_module.ROUTE_HEADERS).postprocess(routes)
+
     def test_missing_verified_graph_error(self):
         status, routes, details = run_routes(
             "2000", "3002", "2006-10-20T10:00:00", "GRU", 15,
