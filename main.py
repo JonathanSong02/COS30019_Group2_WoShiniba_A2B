@@ -91,9 +91,11 @@ def predict_traffic(
             model_dir=model_dir, sequence_length=sequence_length,
         )
     elif name in ("regression_tree", "tree", "regression-tree"):
-        raise NotImplementedError(
-            "Darren's Regression Tree predictor has not yet been integrated. "
-            "Do not treat GRU predictions as Regression Tree outputs."
+        from models.regression_tree_model import predict_regression_tree
+        output = predict_regression_tree(
+            scats_site, as_of, horizon_minutes, processed_csv,
+            model_dir=model_dir, sequence_length=sequence_length,
+            scaler_path=scaler_path,
         )
     else:
         raise ValueError("model_name must be gru, lstm or regression_tree")

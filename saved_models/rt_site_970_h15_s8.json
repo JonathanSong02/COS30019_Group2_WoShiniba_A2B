@@ -1,0 +1,279 @@
+{
+  "model_type": "RegressionTree",
+  "scats_site": "970",
+  "settings": {
+    "site": "970",
+    "horizon_minutes": 15,
+    "lookback": 8,
+    "max_depth_grid": [
+      3,
+      4,
+      5,
+      6,
+      8,
+      10,
+      12,
+      null
+    ],
+    "min_samples_leaf_grid": [
+      1,
+      5,
+      10,
+      20,
+      50
+    ],
+    "seed": 42
+  },
+  "scaler": {
+    "method": "minmax",
+    "fitted_on": "train",
+    "min": 0.0,
+    "max": 1409.0
+  },
+  "split_method": "shared_calendar_days",
+  "selected_hyperparameters": {
+    "max_depth": 8,
+    "min_samples_leaf": 10
+  },
+  "hyperparameter_search": [
+    {
+      "max_depth": 3,
+      "min_samples_leaf": 1,
+      "validation_mse_scaled": 0.0032684232341551414
+    },
+    {
+      "max_depth": 3,
+      "min_samples_leaf": 5,
+      "validation_mse_scaled": 0.0032684232341551414
+    },
+    {
+      "max_depth": 3,
+      "min_samples_leaf": 10,
+      "validation_mse_scaled": 0.0032684232341551414
+    },
+    {
+      "max_depth": 3,
+      "min_samples_leaf": 20,
+      "validation_mse_scaled": 0.0032684232341551414
+    },
+    {
+      "max_depth": 3,
+      "min_samples_leaf": 50,
+      "validation_mse_scaled": 0.0032684232341551414
+    },
+    {
+      "max_depth": 4,
+      "min_samples_leaf": 1,
+      "validation_mse_scaled": 0.002183983186860732
+    },
+    {
+      "max_depth": 4,
+      "min_samples_leaf": 5,
+      "validation_mse_scaled": 0.002183983186860732
+    },
+    {
+      "max_depth": 4,
+      "min_samples_leaf": 10,
+      "validation_mse_scaled": 0.002183983186860732
+    },
+    {
+      "max_depth": 4,
+      "min_samples_leaf": 20,
+      "validation_mse_scaled": 0.0022040915568846604
+    },
+    {
+      "max_depth": 4,
+      "min_samples_leaf": 50,
+      "validation_mse_scaled": 0.0024130614292391106
+    },
+    {
+      "max_depth": 5,
+      "min_samples_leaf": 1,
+      "validation_mse_scaled": 0.0014096602692207118
+    },
+    {
+      "max_depth": 5,
+      "min_samples_leaf": 5,
+      "validation_mse_scaled": 0.001424587758335729
+    },
+    {
+      "max_depth": 5,
+      "min_samples_leaf": 10,
+      "validation_mse_scaled": 0.001394177508787656
+    },
+    {
+      "max_depth": 5,
+      "min_samples_leaf": 20,
+      "validation_mse_scaled": 0.0015204893940853378
+    },
+    {
+      "max_depth": 5,
+      "min_samples_leaf": 50,
+      "validation_mse_scaled": 0.0021225874296434046
+    },
+    {
+      "max_depth": 6,
+      "min_samples_leaf": 1,
+      "validation_mse_scaled": 0.0012209663028155762
+    },
+    {
+      "max_depth": 6,
+      "min_samples_leaf": 5,
+      "validation_mse_scaled": 0.0012590472164485122
+    },
+    {
+      "max_depth": 6,
+      "min_samples_leaf": 10,
+      "validation_mse_scaled": 0.001180609169980846
+    },
+    {
+      "max_depth": 6,
+      "min_samples_leaf": 20,
+      "validation_mse_scaled": 0.001337272511151862
+    },
+    {
+      "max_depth": 6,
+      "min_samples_leaf": 50,
+      "validation_mse_scaled": 0.00204739276441615
+    },
+    {
+      "max_depth": 8,
+      "min_samples_leaf": 1,
+      "validation_mse_scaled": 0.0013774969035548156
+    },
+    {
+      "max_depth": 8,
+      "min_samples_leaf": 5,
+      "validation_mse_scaled": 0.0011851790290872998
+    },
+    {
+      "max_depth": 8,
+      "min_samples_leaf": 10,
+      "validation_mse_scaled": 0.0011569186809138917
+    },
+    {
+      "max_depth": 8,
+      "min_samples_leaf": 20,
+      "validation_mse_scaled": 0.0013334709060569335
+    },
+    {
+      "max_depth": 8,
+      "min_samples_leaf": 50,
+      "validation_mse_scaled": 0.0020562729175101096
+    },
+    {
+      "max_depth": 10,
+      "min_samples_leaf": 1,
+      "validation_mse_scaled": 0.0015871628982072165
+    },
+    {
+      "max_depth": 10,
+      "min_samples_leaf": 5,
+      "validation_mse_scaled": 0.0012453802498540963
+    },
+    {
+      "max_depth": 10,
+      "min_samples_leaf": 10,
+      "validation_mse_scaled": 0.001206677618638803
+    },
+    {
+      "max_depth": 10,
+      "min_samples_leaf": 20,
+      "validation_mse_scaled": 0.0013470417904537433
+    },
+    {
+      "max_depth": 10,
+      "min_samples_leaf": 50,
+      "validation_mse_scaled": 0.0020562729175101096
+    },
+    {
+      "max_depth": 12,
+      "min_samples_leaf": 1,
+      "validation_mse_scaled": 0.0017209042223451012
+    },
+    {
+      "max_depth": 12,
+      "min_samples_leaf": 5,
+      "validation_mse_scaled": 0.0012521355038958284
+    },
+    {
+      "max_depth": 12,
+      "min_samples_leaf": 10,
+      "validation_mse_scaled": 0.001212325645351303
+    },
+    {
+      "max_depth": 12,
+      "min_samples_leaf": 20,
+      "validation_mse_scaled": 0.0013470417904537433
+    },
+    {
+      "max_depth": 12,
+      "min_samples_leaf": 50,
+      "validation_mse_scaled": 0.0020562729175101096
+    },
+    {
+      "max_depth": null,
+      "min_samples_leaf": 1,
+      "validation_mse_scaled": 0.0016910717445876259
+    },
+    {
+      "max_depth": null,
+      "min_samples_leaf": 5,
+      "validation_mse_scaled": 0.0012807046586240257
+    },
+    {
+      "max_depth": null,
+      "min_samples_leaf": 10,
+      "validation_mse_scaled": 0.0012192333346991461
+    },
+    {
+      "max_depth": null,
+      "min_samples_leaf": 20,
+      "validation_mse_scaled": 0.0013470417904537433
+    },
+    {
+      "max_depth": null,
+      "min_samples_leaf": 50,
+      "validation_mse_scaled": 0.0020562729175101096
+    }
+  ],
+  "tree_depth": 8,
+  "tree_leaves": 118,
+  "feature_importance": {
+    "lag_8": 0.0031977018663532928,
+    "lag_7": 0.0009311943120794349,
+    "lag_6": 0.0005151003318337304,
+    "lag_5": 0.0057216562398500976,
+    "lag_4": 0.0009965732694704427,
+    "lag_3": 0.0004736297910907469,
+    "lag_2": 0.0005974191817790411,
+    "lag_1": 0.9875667250075432
+  },
+  "training_samples": 2000,
+  "validation_samples": 384,
+  "test_samples": 480,
+  "training_time_seconds": 0.006475778999629256,
+  "hyperparameter_search_seconds": 0.2196435340001699,
+  "best_validation_mse_scaled": 0.0011569186809138917,
+  "validation_metrics": {
+    "count": 384,
+    "mae": 33.32760642339142,
+    "rmse": 47.92503182850704,
+    "nrmse": 0.036361936136955264,
+    "nrmse_normalisation": "actual_range",
+    "prediction_time_seconds_total": 0.0003818449999926088,
+    "prediction_time_seconds_per_sample": 9.943880208140854e-07
+  },
+  "test_metrics": {
+    "count": 480,
+    "mae": 37.59038354726501,
+    "rmse": 53.68008670396035,
+    "nrmse": 0.04054387213290057,
+    "nrmse_normalisation": "actual_range",
+    "prediction_time_seconds_total": 0.0004425409997566021,
+    "prediction_time_seconds_per_sample": 9.219604161595877e-07
+  },
+  "prediction_semantics": "as_of_time + horizon_minutes",
+  "output_units": "vehicles per 15-minute interval",
+  "note": "Hyper-parameters chosen on validation only; test is held out."
+}

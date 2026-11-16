@@ -1,0 +1,24 @@
+# Line endings: store text files with LF in the repo, convert to the local
+# style on checkout. Stops files showing as "modified" just because they were
+# re-written on Windows (CRLF) or Linux/macOS (LF).
+* text=auto
+
+# Always text
+*.py    text
+*.md    text
+*.txt   text
+*.json  text
+*.csv   text
+*.cfg   text
+*.toml  text
+
+# Never touch (binary)
+*.pt    binary
+*.pth   binary
+*.xls   binary
+*.xlsx  binary
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.pyc   binary
+*.joblib binary

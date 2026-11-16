@@ -111,8 +111,10 @@ class MainIntegrationTests(unittest.TestCase):
             self.assertEqual(len(load_site_coordinates(p)), 2)
 
     def test_missing_regression_tree_not_silent(self):
-        with self.assertRaises(NotImplementedError):
-            predict_traffic(2000, self.when, 'regression_tree')
+        # Regression Tree is integrated; a missing checkpoint must still fail loudly.
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaises(FileNotFoundError):
+                predict_traffic(2000, self.when, 'regression_tree', model_dir=folder)
 
 
 if __name__ == '__main__':
