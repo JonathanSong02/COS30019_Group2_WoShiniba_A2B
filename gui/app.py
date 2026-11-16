@@ -16,12 +16,17 @@ from pathlib import Path
 import gradio as gr
 
 import main as backend
-from gui import route_map
+from gui import prediction_view, route_map
 
 ROOT = Path(__file__).resolve().parents[1]
 ROADS_DEFAULT = backend.DEFAULT_ROADS
 ROUTE_HEADERS = ["Rank", "SCATS route", "Travel time (min)", "Travel time (sec)"]
 VALID_MODELS = {"GRU": "gru", "LSTM": "lstm", "Regression Tree": "regression_tree"}
+# Default forecast time: Mon 30 Oct 2006, 08:00. It is in the test split (data the
+# models never saw), every site has complete data that day (24-28 Oct has gaps
+# at five sites), and it is the morning peak, so the chart has a clear shape.
+DEFAULT_PREDICTION_TIME = "2006-10-30T08:00:00"
+PREDICTION_HEADERS = prediction_view.TABLE_HEADERS
 
 
 def _site_id(value) -> int:
@@ -97,6 +102,48 @@ def run_prediction(site, as_of_time, model, horizon_minutes, sequence_length):
         return (f"✅ **Prediction successful** — {model} checkpoint loaded for SCATS site {site_id}.", round(volume, 2), result)
     except (FileNotFoundError, OSError, ValueError, TypeError, KeyError, NotImplementedError) as exc:
         return (f"⚠️ **Prediction unavailable:** {exc}", None, {})
+
+
+def run_prediction_view(site, as_of_time, model, horizon_minutes, sequence_length,
+                        compare_all=False):
+    """Traffic prediction tab callback.
+
+    Returns (status, predicted count, details JSON, chart HTML, model table).
+    The selected model goes through run_prediction unchanged; with compare_all
+    the other models are run on the same input for the chart and table.
+    """
+    status, volume, details = run_prediction(site, as_of_time, model, horizon_minutes, sequence_length)
+    try:
+        site_id = _site_id(site)
+        when = backend.valid_as_of(str(as_of_time).strip())
+        horizon, lookback = int(horizon_minutes), int(sequence_length)
+    except (ValueError, TypeError):
+        return status, volume, details, "", []
+    coverage = prediction_view.model_coverage(backend.DEFAULT_MODELS)
+    labels = list(VALID_MODELS) if compare_all else [model]
+    others = [m for m in labels if m != model]
+    results = []
+    if volume is not None:
+        results.append({"model": model, "value": details["predicted_vehicles_per_15min"], "note": ""})
+    else:
+        results.append({"model": model, "value": None,
+                        "note": status.replace("⚠️ **Prediction unavailable:** ", "")})
+    results += prediction_view.predict_models(
+        site_id, when, horizon, lookback, others, backend.predict_traffic, coverage)
+    results.sort(key=lambda r: list(VALID_MODELS).index(r["model"]))
+    try:
+        names = route_map.load_site_names(backend.DEFAULT_SITES)
+        payload = prediction_view.build_chart_payload(
+            site_id, when, horizon, lookback, results, backend.DEFAULT_CSV,
+            site_name=names.get(site_id, ""), selected_model=model)
+        chart = prediction_view.build_chart_iframe(payload)
+        table = prediction_view.results_table(results, payload["actual"])
+    except (FileNotFoundError, OSError, ValueError, KeyError) as exc:
+        return status, volume, details, f"<p><b>Chart unavailable:</b> {exc}</p>", []
+    if volume is not None and payload["actual"] is not None:
+        details = {**details, "actual_vehicles_per_15min": payload["actual"],
+                   "error_vehicles_per_15min": round(volume - payload["actual"], 2)}
+    return status, volume, details, chart, table
 
 
 def run_routes(origin, destination, as_of_time, model, horizon_minutes,
@@ -193,36 +240,48 @@ def build_app() -> gr.Blocks:
             "# Traffic-Based Route Guidance System (TBRGS)\n"
             "**COS30019 · Group 2 · Assignment 2B**  |  Boroondara SCATS data · October 2006"
         )
-        available = len(list(backend.DEFAULT_MODELS.glob("gru_site_*_h15_s8.pt")))
-        gr.Markdown(
-            f"**Development status:** GRU checkpoints available for **{available} of {len(sites)}** "
-            "SCATS sites at 15-minute horizon (8-step lookback). Other horizons/models require "
-            "their own checkpoints. Road graph is Darren's **map-reviewed, estimated-distance** "
-            "network; it has not been independently ground-truthed."
-        )
+        coverage = prediction_view.model_coverage(backend.DEFAULT_MODELS)
+        with gr.Accordion("Model coverage: SCATS sites with a trained model (8-step lookback)", open=True):
+            gr.Markdown(
+                prediction_view.coverage_markdown(coverage, len(sites)) + "\n\n"
+                "Route guidance needs a forecast for every site on the network, so full-network "
+                "routes need ✅ for the chosen model and horizon. The road graph is Darren's "
+                "**map-reviewed, estimated-distance** network; it has not been independently "
+                "ground-truthed."
+            )
         with gr.Tabs():
             with gr.Tab("Traffic prediction"):
                 gr.Markdown("### Predict traffic for one future 15-minute interval")
                 with gr.Row():
-                    with gr.Column():
+                    with gr.Column(scale=1):
                         site = gr.Dropdown(label="SCATS site ID", choices=sites,
                                            value=start_site, allow_custom_value=True)
                         time = gr.Textbox(label="Last observed date and time (ISO local)",
-                                          value="2006-10-20T10:00:00",
-                                          info="Example: 2006-10-20T10:00:00. Must be a 15-minute boundary.")
+                                          value=DEFAULT_PREDICTION_TIME,
+                                          info="Must be a 15-minute boundary. 27-31 Oct is the test set "
+                                               "(unseen by the models); 24-28 Oct has gaps at five sites.")
                         model = gr.Dropdown(label="ML model", choices=list(VALID_MODELS), value="GRU")
                         horizon = gr.Dropdown(label="Forecast horizon (minutes)",
-                                              choices=[15, 30, 60], value=30)
+                                              choices=[15, 30, 60], value=15,
+                                              info="Regression Tree: all sites at 15/30/60 min. GRU/LSTM: see Model coverage above")
                         seq = gr.Number(label="Historical lookback (15-minute intervals)",
                                         value=8, precision=0, minimum=1, maximum=96)
+                        compare = gr.Checkbox(label="Compare with the other two models (side by side on the chart)",
+                                              value=False)
                         submit = gr.Button("Predict traffic", variant="primary")
-                    with gr.Column():
+                    with gr.Column(scale=2):
                         status = gr.Markdown("Select a trained model and click **Predict traffic**.")
-                        volume = gr.Number(label="Predicted vehicles / 15 minutes", interactive=False)
-                        result_json = gr.JSON(label="Prediction details")
+                        volume = gr.Number(label="Predicted vehicles / 15 minutes (selected model)",
+                                           interactive=False)
+                        chart = gr.HTML(label="Forecast in context")
+                        model_table = gr.Dataframe(
+                            headers=PREDICTION_HEADERS, datatype=["str", "number", "number", "number", "str"],
+                            value=[], interactive=False, label="Models at the forecast time")
+                        with gr.Accordion("Prediction details", open=False):
+                            result_json = gr.JSON(label="Details")
                 submit.click(
-                    fn=run_prediction, inputs=[site, time, model, horizon, seq],
-                    outputs=[status, volume, result_json],
+                    fn=run_prediction_view, inputs=[site, time, model, horizon, seq, compare],
+                    outputs=[status, volume, result_json, chart, model_table],
                 )
             with gr.Tab("Route guidance"):
                 gr.Markdown(

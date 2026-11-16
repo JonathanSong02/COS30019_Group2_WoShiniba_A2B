@@ -29,7 +29,8 @@ The patch adds four GUI backend tests. If the existing 54 are unchanged, you sho
 ## Limitations
 
 - Route guidance shows an interactive OpenStreetMap view (Leaflet, no API key): the 40 sites, the road links and the top-5 routes in different colours. Hover a site for its predicted flow, a route for its travel time. Sites are shifted by the measured SCATS offset (`data/processed/scats_coordinate_offset.json`). Routes are straight lines between intersections, and the map background needs internet (routing works offline).
-- Only site 2000 GRU models were previously confirmed; LSTM and Regression Tree may be unavailable.
+- Model coverage is shown at the top of the GUI, counted from the files in `saved_models/`. Regression Tree: all 40 sites at 15/30/60 min. GRU: 38 sites at 15 min (no 3685, 4264), site 2000 only at 30/60. LSTM: site 2000 only.
+- Traffic prediction shows a chart of the forecast in context: observed traffic for the 4 hours before (model input window shaded), what actually happened afterwards, and each model's prediction at the forecast time, with a table of prediction, actual and error. Default time is Mon 30 Oct 2006 08:00 (test split, complete data at every site).
 - GRU output is one future 15-minute interval, not an hourly vehicle count.
 - The provisional `steady_4x` hourly approximation and origin/destination flow convention must be confirmed/documented for final evaluation.
 - `Gradio` is not added to the existing UTF-16 encoded `requirements.txt` in this patch. For packaging, ensure your final dependency file is UTF-8 and contains a compatible Gradio version.
