@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from pathlib import Path
 
@@ -71,6 +72,7 @@ def evaluate_saved_lstm(
     metrics_path = destination / "metrics.json"
     prediction_plot_path = destination / "actual_vs_predicted.png"
     loss_plot_path = destination / "training_validation_loss.png"
+    prediction_csv_path = destination / "predictions.csv"
 
     metrics_path.write_text(
         json.dumps(metrics, indent=2),
@@ -78,6 +80,15 @@ def evaluate_saved_lstm(
     )
 
     timestamps = prediction_result["metadata"]["datetime"]
+    write_prediction_csv(
+        output_path=prediction_csv_path,
+        site=site,
+        horizon_minutes=horizon_minutes,
+        sequence_length=sequence_length,
+        timestamps=timestamps,
+        actual=prediction_result["actual"],
+        predicted=prediction_result["predicted"],
+    )
 
     plot_actual_vs_predicted(
         actual=prediction_result["actual"],
@@ -104,9 +115,79 @@ def evaluate_saved_lstm(
     return {
         "metrics": metrics,
         "metrics_path": str(metrics_path),
+        "prediction_csv_path": str(prediction_csv_path),
         "prediction_plot_path": str(prediction_plot_path),
         "loss_plot_path": str(loss_plot_path),
     }
+    
+def write_prediction_csv(
+    output_path: str | Path,
+    *,
+    site: int,
+    horizon_minutes: int,
+    sequence_length: int,
+    timestamps,
+    actual,
+    predicted,
+) -> Path:
+    """Export test predictions for model comparison."""
+
+    if not (
+        len(timestamps) == len(actual) == len(predicted)
+    ):
+        raise ValueError(
+            "timestamps, actual and predicted must have equal lengths"
+        )
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_path.open(
+        "w",
+        newline="",
+        encoding="utf-8",
+    ) as csv_file:
+        writer = csv.writer(csv_file)
+
+        writer.writerow(
+            [
+                "scats_site",
+                "datetime",
+                "horizon_minutes",
+                "sequence_length",
+                "actual_traffic_volume",
+                "predicted_traffic_volume",
+                "absolute_error",
+            ]
+        )
+
+        for timestamp, actual_value, predicted_value in zip(
+            timestamps,
+            actual,
+            predicted,
+        ):
+            actual_value = float(actual_value)
+            predicted_value = float(predicted_value)
+
+            timestamp_text = (
+                timestamp.isoformat()
+                if hasattr(timestamp, "isoformat")
+                else str(timestamp)
+            )
+
+            writer.writerow(
+                [
+                    int(site),
+                    timestamp_text,
+                    int(horizon_minutes),
+                    int(sequence_length),
+                    actual_value,
+                    predicted_value,
+                    abs(actual_value - predicted_value),
+                ]
+            )
+
+    return output_path
 
 
 def main():
