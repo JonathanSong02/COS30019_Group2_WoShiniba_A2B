@@ -18,11 +18,12 @@ Put the raw .xls in `data/raw/` (not committed). Outputs go to `data/processed/`
 | `datetime` | **start** of the 15-min interval, `YYYY-MM-DD HH:MM` (raw `V00` -> `00:00`, `V95` -> `23:45`) |
 | `traffic_volume_15min` | vehicles in that 15 min, summed over all core approaches of the site; **blank = missing** |
 
-The file is a complete grid of 40 sites x 31 days x 96 steps = 119,040 rows, so consecutive rows of a site are always exactly 15 min apart. 4.4% of values are blank (missing). Don't fill them with 0.
+The file is a complete grid of 40 sites x 31 days x 96 steps = 119,040 rows, so consecutive rows of a site are always exactly 15 min apart. 2.9% of values are blank (missing). Don't fill them with 0.
 
 ## Cleaning decisions
 - **Approach key = Location + detector number.** Site 4335 has two different detectors with the same Location name, different coordinates and different counts. They look like duplicates but aren't, so both are kept.
-- **Incomplete site-days are blank, not partial sums.** When one approach of a site didn't report, summing the rest would look like a fake traffic drop. Site 3685 loses Warrigal Rd S from 23 Oct, and 4264 loses an approach from 23 Oct.
+- **Incomplete site-days are blank, not partial sums.** When one approach of a site didn't report, summing the rest would look like a fake traffic drop.
+- **Detectors that fail for good are dropped for the whole month.** An approach only counts if it reports at least once in every split (train, val, test). Warrigal Rd S at 3685 and Glenferrie Rd S at 4264 stop on 23 Oct and never come back. Keeping them blanked all of 23-31 Oct (the whole val and test period), so GRU training failed for those sites. Their totals now use the remaining 2 (3685) and 3 (4264) approaches all month, so the series is consistent and every site has val and test data. Only these two sites changed, and the train scaler (max 1409) is unchanged.
 - **Rare approaches are ignored.** Only approaches present on at least 50% of a site's days count. This only affects 3001 (Church St, 2 of 31 days).
 - **Missing days.** The VicRoads notes say poor data was removed for some sites. Five sites (3002, 3127, 4262, 4263, 4812) all miss 24 to 28 Oct. Full list is in `data_quality_report.md`.
 - **Coordinates.** 31 rows have lat/lon = 0 and are ignored. Site coordinates in `scats_sites.csv` are the median of the remaining rows.

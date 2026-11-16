@@ -61,12 +61,33 @@ def to_long(df):
 
 
 def core_approaches(df):
-    """{site: set of approaches present on >= CORE_APPROACH_SHARE of its days}."""
+    """{site: set of approaches that define the site total}.
+
+    An approach is core when it
+      1. reports on >= CORE_APPROACH_SHARE of the site's days, and
+      2. reports at least once in EVERY split (train, val and test).
+
+    Rule 2 handles detectors that fail part-way through the month and never
+    come back (Warrigal Rd S at 3685 and Glenferrie Rd S at 4264 both stop on
+    23 Oct). Keeping them would blank every later site-day, i.e. the whole
+    validation and test period, so the models could not be tuned or tested.
+    Dropping them for the whole month keeps the site total defined the same
+    way in every split instead of creating a fake traffic drop.
+    """
     days_per_site = df.groupby("scats_site")["day"].nunique()
     days_per_appr = df.groupby(["scats_site", "approach"])["day"].nunique().reset_index()
     days_per_appr["share"] = days_per_appr["day"] / days_per_appr["scats_site"].map(days_per_site)
-    core = days_per_appr[days_per_appr["share"] >= CORE_APPROACH_SHARE]
-    return core.groupby("scats_site")["approach"].apply(set).to_dict()
+    splits_per_appr = (df.assign(split=split_of(df["day"]))
+                         .groupby(["scats_site", "approach"])["split"].nunique())
+    days_per_appr["n_splits"] = splits_per_appr.reindex(
+        pd.MultiIndex.from_frame(days_per_appr[["scats_site", "approach"]])).values
+    core = days_per_appr[(days_per_appr["share"] >= CORE_APPROACH_SHARE)
+                         & (days_per_appr["n_splits"] == len(SPLIT_DAYS))]
+    core = core.groupby("scats_site")["approach"].apply(set).to_dict()
+    missing = set(days_per_site.index) - set(core)
+    if missing:
+        raise ValueError(f"Sites left with no core approach: {sorted(missing)}")
+    return core
 
 
 def site_totals(long, core, full_index):

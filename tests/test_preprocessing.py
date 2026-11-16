@@ -14,6 +14,7 @@ from data_processing.dataset import (
     SPLIT_DAYS, split_of, fit_minmax, apply_minmax, inverse_minmax,
     load_series, load_scaler, make_windows,
 )
+from data_processing.scats_preprocess import core_approaches
 
 PROCESSED = os.path.join("data", "processed")
 SERIES = os.path.join(PROCESSED, "scats_15min.csv")
@@ -104,6 +105,44 @@ class ProcessedFileTests(unittest.TestCase):
         train = self.df.loc[split_of(self.df["datetime"]) == "train", "traffic_volume_15min"]
         self.assertEqual(self.scaler["fitted_on"], "train")
         self.assertEqual(self.scaler["max"], train.max())
+
+
+class CoreApproachTests(unittest.TestCase):
+    """A detector that dies part-way through the month must not blank the
+    rest of the site's data (the 3685 / 4264 problem)."""
+
+    def _raw(self, approach_days):
+        rows = [{"scats_site": 1, "approach": a, "day": d}
+                for a, days in approach_days.items() for d in days]
+        return pd.DataFrame(rows)
+
+    def test_detector_failing_before_val_is_dropped(self):
+        october = pd.date_range("2006-10-01", "2006-10-31")
+        raw = self._raw({"ok": october, "dies_23_oct": october[:22]})
+        self.assertEqual(core_approaches(raw)[1], {"ok"})
+
+    def test_rare_approach_is_dropped(self):
+        october = pd.date_range("2006-10-01", "2006-10-31")
+        raw = self._raw({"ok": october, "rare": october[[0, 30]]})
+        self.assertEqual(core_approaches(raw)[1], {"ok"})
+
+    def test_site_with_no_usable_approach_is_an_error(self):
+        october = pd.date_range("2006-10-01", "2006-10-31")
+        raw = self._raw({"dies_23_oct": october[:22]})
+        with self.assertRaises(ValueError):
+            core_approaches(raw)
+
+
+@unittest.skipUnless(os.path.exists(SERIES), "run scats_preprocess first")
+class EverySiteUsableTests(unittest.TestCase):
+    def test_every_site_has_data_in_every_split(self):
+        df = load_series(SERIES)
+        df["split"] = split_of(df["datetime"])
+        observed = df.dropna(subset=["traffic_volume_15min"]).groupby(["scats_site", "split"]).size()
+        for site in df["scats_site"].unique():
+            for split in SPLIT_DAYS:
+                with self.subTest(site=site, split=split):
+                    self.assertGreater(observed.get((site, split), 0), 0)
 
 
 if __name__ == "__main__":
