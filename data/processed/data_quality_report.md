@@ -8,15 +8,15 @@
 - Negative or missing raw counts: 0
 - Max 15-min count at one approach: 695
 - Max 15-min site total: 1409
-- Site-level grid: 119040 rows, of which 5184 missing (4.4%)
+- Site-level grid: 119040 rows, of which 3456 missing (2.9%)
 
 ## Missing 15-min steps per split
 
 | split | rows | missing |
 |---|---|---|
 | train | 84480 | 960 |
-| val | 15360 | 2304 |
-| test | 19200 | 1920 |
+| val | 15360 | 1536 |
+| test | 19200 | 960 |
 
 ## Sites with missing data
 
@@ -28,16 +28,17 @@
 | 3002 | 480 | 5 |
 | 3127 | 480 | 5 |
 | 3682 | 192 | 2 |
-| 3685 | 960 | 10 |
+| 3685 | 96 | 1 |
 | 4057 | 192 | 2 |
 | 4262 | 480 | 5 |
 | 4263 | 480 | 5 |
-| 4264 | 864 | 9 |
 | 4272 | 96 | 1 |
 | 4812 | 480 | 5 |
 
 ## Ignored non-core approaches
 
 - 3001: CHURCH_ST SW of BARKERS_RD #6
+- 3685: WARRIGAL_RD S of HIGHBURY_RD #5
+- 4264: GLENFERRIE_RD S of BURWOOD_RD #5
 
 Sites table: 40 sites with coordinates.
