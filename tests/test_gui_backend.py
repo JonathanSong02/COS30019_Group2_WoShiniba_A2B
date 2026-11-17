@@ -39,11 +39,22 @@ class GUIBackendTests(unittest.TestCase):
         import gradio as gr
         from gui import app as gui_module
         from main import DEFAULT_ROADS
-        status, routes, details, map_html = run_routes(
-            "2000", "3002", "2006-10-20T10:00:00", "GRU", 15,
-            8, 5, str(DEFAULT_ROADS), "origin",
-            "Clamp to 1500 (research sensitivity only)", "exclude",
-        )
+        # Deliberately simulate two unavailable checkpoints instead of relying
+        # on the current saved_models/ folder. This test must continue to work
+        # after sites 3685 and 4264 are trained.
+        real_predict = gui_module.backend.predict_traffic
+
+        def missing_two_sites(site, as_of, **kwargs):
+            if int(site) in (3685, 4264):
+                raise FileNotFoundError(f"Simulated missing checkpoint for site {site}")
+            return real_predict(site, as_of, **kwargs)
+
+        with patch("gui.app.backend.predict_traffic", side_effect=missing_two_sites):
+            status, routes, details, map_html = run_routes(
+                "2000", "3002", "2006-10-20T10:00:00", "GRU", 15,
+                8, 5, str(DEFAULT_ROADS), "origin",
+                "Clamp to 1500 (research sensitivity only)", "exclude",
+            )
         self.assertIn("PARTIAL-NETWORK", status)
         self.assertEqual(len(routes), 5)
         self.assertIn("3685", details["assumptions"]["unavailable_sites"])
