@@ -1,0 +1,318 @@
+{
+  "comparison": "GRU vs LSTM vs Regression Tree",
+  "sequence_length": 8,
+  "common_sites_by_horizon": {
+    "15": [
+      970,
+      2000,
+      2200,
+      2820,
+      2825,
+      2827,
+      2846,
+      3001,
+      3002,
+      3120,
+      3122,
+      3126,
+      3127,
+      3180,
+      3662,
+      3682,
+      3685,
+      3804,
+      3812,
+      4030,
+      4032,
+      4034,
+      4035,
+      4040,
+      4043,
+      4051,
+      4057,
+      4063,
+      4262,
+      4263,
+      4264,
+      4266,
+      4270,
+      4272,
+      4273,
+      4321,
+      4324,
+      4335,
+      4812,
+      4821
+    ],
+    "30": [
+      2000
+    ],
+    "60": [
+      2000
+    ]
+  },
+  "matched_test_predictions_by_horizon": {
+    "15": 18192,
+    "30": 480,
+    "60": 480
+  },
+  "nrmse_method": "Each site's RMSE divided by the actual-value range for that site's full test split; network averages are macro averages across sites.",
+  "macro_average_metrics_by_horizon": {
+    "15": {
+      "GRU": {
+        "mae": 30.548436165345056,
+        "rmse": 41.32348870658315,
+        "nrmse": 0.04990637262793273,
+        "nrmse_percent": 4.990637262793273,
+        "training_time_seconds": 2.072193020005943,
+        "model_selection_seconds": null,
+        "prediction_time_per_sample_seconds": 2.1536849382786294e-06
+      },
+      "LSTM": {
+        "mae": 34.210795480029766,
+        "rmse": 45.773469413531785,
+        "nrmse": 0.05537553806369154,
+        "nrmse_percent": 5.5375538063691545,
+        "training_time_seconds": 6.2223800649998795,
+        "model_selection_seconds": null,
+        "prediction_time_per_sample_seconds": 1.33385748333151e-05
+      },
+      "Regression Tree": {
+        "mae": 29.038001191119015,
+        "rmse": 40.50578716736561,
+        "nrmse": 0.048875485899198205,
+        "nrmse_percent": 4.88754858991982,
+        "training_time_seconds": 0.006342274100006762,
+        "model_selection_seconds": 0.22807660405001115,
+        "prediction_time_per_sample_seconds": 1.0244776241575081e-06
+      }
+    },
+    "30": {
+      "GRU": {
+        "mae": 59.17679583482677,
+        "rmse": 78.22652947988931,
+        "nrmse": 0.057477245088440654,
+        "nrmse_percent": 5.747724508844065,
+        "training_time_seconds": 1.8094681999646127,
+        "model_selection_seconds": null,
+        "prediction_time_per_sample_seconds": 2.3395832007129985e-06
+      },
+      "LSTM": {
+        "mae": 61.08315057011011,
+        "rmse": 81.6980449693574,
+        "nrmse": 0.06002795452094554,
+        "nrmse_percent": 6.002795452094554,
+        "training_time_seconds": 4.031184400000711,
+        "model_selection_seconds": null,
+        "prediction_time_per_sample_seconds": 1.6002291666457798e-05
+      },
+      "Regression Tree": {
+        "mae": 47.36275958994709,
+        "rmse": 68.659536158426,
+        "nrmse": 0.05044785904366348,
+        "nrmse_percent": 5.044785904366348,
+        "training_time_seconds": 0.007372154000222508,
+        "model_selection_seconds": 0.21087638300014078,
+        "prediction_time_per_sample_seconds": 1.1980500005392969e-06
+      }
+    },
+    "60": {
+      "GRU": {
+        "mae": 97.55858457739232,
+        "rmse": 124.78999879764224,
+        "nrmse": 0.09168993426101366,
+        "nrmse_percent": 9.168993426101366,
+        "training_time_seconds": 1.8596311999717727,
+        "model_selection_seconds": null,
+        "prediction_time_per_sample_seconds": 3.7252083226727943e-06
+      },
+      "LSTM": {
+        "mae": 93.83206276763619,
+        "rmse": 120.37813915722249,
+        "nrmse": 0.0884483033266719,
+        "nrmse_percent": 8.84483033266719,
+        "training_time_seconds": 4.239617400000498,
+        "model_selection_seconds": null,
+        "prediction_time_per_sample_seconds": 1.576583333265565e-05
+      },
+      "Regression Tree": {
+        "mae": 62.39308158580291,
+        "rmse": 96.03486774461025,
+        "nrmse": 0.0705619895257974,
+        "nrmse_percent": 7.05619895257974,
+        "training_time_seconds": 0.005736164000154531,
+        "model_selection_seconds": 0.20936700899983407,
+        "prediction_time_per_sample_seconds": 9.445666658317957e-07
+      }
+    }
+  },
+  "lower_rmse_site_wins_by_horizon": {
+    "15": {
+      "GRU": 15,
+      "LSTM": 1,
+      "Regression Tree": 24
+    },
+    "30": {
+      "GRU": 0,
+      "LSTM": 0,
+      "Regression Tree": 1
+    },
+    "60": {
+      "GRU": 0,
+      "LSTM": 0,
+      "Regression Tree": 1
+    }
+  },
+  "site_2000_metrics": {
+    "15": {
+      "GRU": {
+        "model": "GRU",
+        "scats_site": 2000,
+        "horizon_minutes": 15,
+        "sequence_length": 8,
+        "sample_count": 480,
+        "mae": 42.86208989674148,
+        "rmse": 55.50298020975367,
+        "nrmse": 0.040781029375399014,
+        "nrmse_percent": 4.078102937539901,
+        "nrmse_normalisation": "site_test_actual_range",
+        "training_time_seconds": 1.9764380999840796,
+        "model_selection_seconds": null,
+        "prediction_time_seconds": 0.0013490000274032354,
+        "prediction_time_per_sample_seconds": 2.8104167237567405e-06
+      },
+      "LSTM": {
+        "model": "LSTM",
+        "scats_site": 2000,
+        "horizon_minutes": 15,
+        "sequence_length": 8,
+        "sample_count": 480,
+        "mae": 52.61400828425152,
+        "rmse": 67.2396025796609,
+        "nrmse": 0.04940455805487415,
+        "nrmse_percent": 4.940455805487415,
+        "nrmse_normalisation": "site_test_actual_range",
+        "training_time_seconds": 4.161480900000242,
+        "model_selection_seconds": null,
+        "prediction_time_seconds": 0.12423139999918931,
+        "prediction_time_per_sample_seconds": 0.0002588154166649777
+      },
+      "Regression Tree": {
+        "model": "Regression Tree",
+        "scats_site": 2000,
+        "horizon_minutes": 15,
+        "sequence_length": 8,
+        "sample_count": 480,
+        "mae": 37.893029643270474,
+        "rmse": 54.06327118709258,
+        "nrmse": 0.03972319705150079,
+        "nrmse_percent": 3.9723197051500794,
+        "nrmse_normalisation": "site_test_actual_range",
+        "training_time_seconds": 0.006655821999629552,
+        "model_selection_seconds": 0.20908101499981058,
+        "prediction_time_seconds": 0.0005022450000069512,
+        "prediction_time_per_sample_seconds": 1.0463437500144817e-06
+      }
+    },
+    "30": {
+      "GRU": {
+        "model": "GRU",
+        "scats_site": 2000,
+        "horizon_minutes": 30,
+        "sequence_length": 8,
+        "sample_count": 480,
+        "mae": 59.17679583482677,
+        "rmse": 78.22652947988931,
+        "nrmse": 0.057477245088440654,
+        "nrmse_percent": 5.747724508844065,
+        "nrmse_normalisation": "site_test_actual_range",
+        "training_time_seconds": 1.8094681999646127,
+        "model_selection_seconds": null,
+        "prediction_time_seconds": 0.0011229999363422394,
+        "prediction_time_per_sample_seconds": 2.3395832007129985e-06
+      },
+      "LSTM": {
+        "model": "LSTM",
+        "scats_site": 2000,
+        "horizon_minutes": 30,
+        "sequence_length": 8,
+        "sample_count": 480,
+        "mae": 61.08315057011011,
+        "rmse": 81.6980449693574,
+        "nrmse": 0.06002795452094554,
+        "nrmse_percent": 6.002795452094554,
+        "nrmse_normalisation": "site_test_actual_range",
+        "training_time_seconds": 4.031184400000711,
+        "model_selection_seconds": null,
+        "prediction_time_seconds": 0.007681099999899743,
+        "prediction_time_per_sample_seconds": 1.6002291666457798e-05
+      },
+      "Regression Tree": {
+        "model": "Regression Tree",
+        "scats_site": 2000,
+        "horizon_minutes": 30,
+        "sequence_length": 8,
+        "sample_count": 480,
+        "mae": 47.36275958994709,
+        "rmse": 68.659536158426,
+        "nrmse": 0.05044785904366348,
+        "nrmse_percent": 5.044785904366348,
+        "nrmse_normalisation": "site_test_actual_range",
+        "training_time_seconds": 0.007372154000222508,
+        "model_selection_seconds": 0.21087638300014078,
+        "prediction_time_seconds": 0.0005750640002588625,
+        "prediction_time_per_sample_seconds": 1.1980500005392969e-06
+      }
+    },
+    "60": {
+      "GRU": {
+        "model": "GRU",
+        "scats_site": 2000,
+        "horizon_minutes": 60,
+        "sequence_length": 8,
+        "sample_count": 480,
+        "mae": 97.55858457739232,
+        "rmse": 124.78999879764224,
+        "nrmse": 0.09168993426101366,
+        "nrmse_percent": 9.168993426101366,
+        "nrmse_normalisation": "site_test_actual_range",
+        "training_time_seconds": 1.8596311999717727,
+        "model_selection_seconds": null,
+        "prediction_time_seconds": 0.0017880999948829412,
+        "prediction_time_per_sample_seconds": 3.7252083226727943e-06
+      },
+      "LSTM": {
+        "model": "LSTM",
+        "scats_site": 2000,
+        "horizon_minutes": 60,
+        "sequence_length": 8,
+        "sample_count": 480,
+        "mae": 93.83206276763619,
+        "rmse": 120.37813915722249,
+        "nrmse": 0.0884483033266719,
+        "nrmse_percent": 8.84483033266719,
+        "nrmse_normalisation": "site_test_actual_range",
+        "training_time_seconds": 4.239617400000498,
+        "model_selection_seconds": null,
+        "prediction_time_seconds": 0.007567599999674712,
+        "prediction_time_per_sample_seconds": 1.576583333265565e-05
+      },
+      "Regression Tree": {
+        "model": "Regression Tree",
+        "scats_site": 2000,
+        "horizon_minutes": 60,
+        "sequence_length": 8,
+        "sample_count": 480,
+        "mae": 62.39308158580291,
+        "rmse": 96.03486774461025,
+        "nrmse": 0.0705619895257974,
+        "nrmse_percent": 7.05619895257974,
+        "nrmse_normalisation": "site_test_actual_range",
+        "training_time_seconds": 0.005736164000154531,
+        "model_selection_seconds": 0.20936700899983407,
+        "prediction_time_seconds": 0.0004533919995992619,
+        "prediction_time_per_sample_seconds": 9.445666658317957e-07
+      }
+    }
+  }
+}
