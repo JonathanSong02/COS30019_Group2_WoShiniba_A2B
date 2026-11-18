@@ -71,5 +71,29 @@ Columns: `from_site,to_site,distance_km`. There are 136 directed edges (68 two-w
 - **Edges follow real roads, not proximity.** Each link comes from the road names in the SCATS `Location` field and was checked against the VicRoads Boroondara map (`IBM data_Bor.pdf`). The full list, with road names, is `ROAD_LINKS` in `build_road_graph.py`.
 - **All roads are two-way**, so every link appears in both directions.
 - **Distance:** `direct` links (two sites next to each other on one road) use the haversine straight-line distance. `junction` links (the route turns once at an intersection that isn't in our dataset) use an L-shaped north-south plus east-west estimate. Distances are approximations, not measured along road curves.
-- `scats_road_edges_detailed.csv` adds `road`, `link_type` and `confidence`. The 14 `medium` links (orange in `docs/scats_road_graph.png`) are freeway or road-continuation links: Eastern Fwy, Swan St -> Riversdale Rd, the High St (Glen Iris) links, and the junction links. Check these on a street map if they matter for a demo route.
+- `scats_road_edges_detailed.csv` adds `road`, `link_type` and `confidence`. The 15 `medium` links (orange in `docs/scats_road_graph.png`) are freeway or road-continuation links: Eastern Fwy, Swan St -> Riversdale Rd, the High St (Glen Iris) links, and the junction links. Check these on a street map if they matter for a demo route.
 - **Coordinate offset (measured):** SCATS coordinates sit about 200 m south-west of the real intersections. Comparing 14 signalised intersections with OpenStreetMap (the node shared by the two named roads) gave a near-constant shift of +0.001505° lat / +0.001305° lon (about 168 m north, 115 m east). Applying the median shift cuts the mean position error from 202.5 m to 3.9 m (max 13.4 m). The values are in `data/processed/scats_coordinate_offset.json`, per-site measurements in `scats_coordinate_offset_samples.csv`. The shift is used only by the GUI map (`gui/route_map.py`); because it is the same for every site, routing distances are unaffected and still use the original coordinates.
+
+## Road link review against OpenStreetMap (Task 7)
+
+Run: `python -m data_processing.review_road_links` (needs internet, about 3 minutes; tests: `python -m unittest tests.test_road_link_review`).
+
+For every link, the script asks the OSRM routing service (`router.project-osrm.org`, which finds driving routes on OpenStreetMap road data) for the driving route between the two sites, in both directions, and compares the roads the route uses and its length with our estimate. Site positions are the offset-corrected coordinates. OSRM moves each point onto the nearest road; next to a freeway that can be the freeway itself, so for the six links in `SNAP_TO_ROAD` both ends are first moved onto the link's named road using OpenStreetMap's map data (the nearest node of that road, 2-49 m from the corrected site). OSRM's raw answers are cached in `data/processed/road_link_review_osrm.json`. Results per link: `data/processed/scats_road_edges_review.csv`.
+
+| Result | Links | Meaning |
+|---|---|---|
+| `VERIFIED` | 61 | The route uses the named roads and the road distance is within 20% of our estimate |
+| `DISTANCE_SHORT` | 5 | Right road, but it curves or jogs, so our straight line is 20-32% short: Eastern Fwy 2820-2825 (ramps), Princess St 2820-3662, Cotham Rd 3662-4324, Burke Rd 4030-4032 (Kew Junction), Burwood Rd 4262-4263 |
+| `DISTANCE_LONG` | 1 | 2000-3812 (Camberwell Rd + Toorak Rd): the L-shaped estimate is 4.54 km, the road 3.57 km, because Camberwell Rd runs diagonally |
+| `WRONG_ROAD_FIXED` | 1 | 2825-2827 was labelled Eastern Fwy, but there is no freeway connection between the Burke Rd and Bulleen Rd interchanges. The shortest drive uses local streets (The Boulevard, Aquila St), 2.258 km instead of the 1.451 km straight line. The link is now `measured` with that distance (`MEASURED_KM` in `build_road_graph.py`) |
+
+Over the other 67 links, the road distance (shorter direction) is a median **1.007x** our estimate (mean 1.033x): 59 links are within 10% and 62 within 20%. The shorter direction is used because the longer one is often a detour forced by turn bans or one-way snapping, not the road length itself.
+
+**Distance limitations (for the report):**
+
+- Distances are straight-line (`direct`) or L-shaped (`junction`) estimates, not lengths along the road, except the one `measured` link. They are about right on average (median 1.007x) but up to 32% short on curving roads and 21% long on one diagonal road.
+- Only the wrong link was changed, so the routes and comparisons from earlier tasks still hold. Using the OSM distances for every link would be a possible improvement; the values are in the review file (`osm_km_shorter`).
+- Every road is treated as two-way with the same length both ways. OSM shows that turn bans make some trips longer in one direction (for example Riversdale Rd 4040 to 3804: 0.63 km one way, 1.47 km back), which the graph does not model.
+- Freeway links (2820-2825, 2846-4043 via Monash Fwy ramps) use the same 60 km/h speed cap and flow formula as arterial roads.
+- The check relies on OSM data and one router; it confirms that a drivable connection exists and how long it is, not traffic rules such as lane closures in October 2006.
+

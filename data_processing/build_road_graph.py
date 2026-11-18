@@ -17,15 +17,21 @@ and checked against the VicRoads Boroondara map (IBM data_Bor.pdf):
                only), then reaches the next site. Distance = |north-south| +
                |east-west| km (an L-shaped estimate for two near-perpendicular
                roads).
+* "measured" - the connection was checked by routing on OpenStreetMap and the
+               named-road assumption was wrong; the distance is the measured
+               OSM driving distance (MEASURED_KM below). See
+               data/processed/scats_road_edges_review.csv.
 
 Every road is treated as two-way, so each link is written in both directions.
 
 Limitations (mention in the report)
 * Distances are straight-line / L-shaped estimates, not measured along curves.
-* SCATS coordinates are offset slightly from the true map position; the offset
-  is roughly the same for all sites, so distances are not materially affected.
-* Links marked confidence "medium" go through freeways or road continuations
-  that should be double-checked on a street map.
+* SCATS coordinates are about 200 m south-west of the true intersections (see
+  data/processed/scats_coordinate_offset.json); the shift is the same for every
+  site, so the distances between sites are not affected.
+* All 68 links were checked against OpenStreetMap driving routes (Task 7 review,
+  data/processed/scats_road_edges_review.csv): 54 are within 20% of the road
+  distance; the estimates are mostly slightly short because roads curve.
 
 Run:  python -m data_processing.build_road_graph
 """
@@ -79,7 +85,9 @@ ROAD_LINKS = [
     (4051, 2827, "Bulleen Rd", "direct", "high"),
     # Eastern Freeway (via interchanges / ramps)
     (2820, 2825, "Eastern Fwy", "direct", "medium"),
-    (2825, 2827, "Eastern Fwy", "direct", "medium"),
+    # Reviewed on OpenStreetMap: there is no freeway connection between the
+    # Burke Rd and Bulleen Rd interchanges; the shortest drive uses local streets.
+    (2825, 2827, "Burke Rd + local streets (The Boulevard, Aquila St)", "measured", "medium"),
     # Princess St, Denmark St, Power St, Church St
     (2820, 3662, "Princess St", "direct", "high"),
     (3662, 3002, "Denmark St", "direct", "high"),
@@ -126,6 +134,11 @@ ROAD_LINKS = [
     (4270, 4273, "Glenferrie Rd + Toorak Rd", "junction", "medium"),
 ]
 
+# OSM driving distance (shorter direction) for links whose route was measured.
+MEASURED_KM = {
+    frozenset((2825, 2827)): 2.258,
+}
+
 EARTH_RADIUS_KM = 6371.0088
 
 
@@ -160,7 +173,12 @@ def build_edges(sites, links=ROAD_LINKS):
             raise ValueError(f"Self-loop or duplicate link {a}-{b}")
         seen.add(frozenset((a, b)))
         (la, oa), (lb, ob) = sites[a], sites[b]
-        dist = haversine_km(la, oa, lb, ob) if kind == "direct" else l_shape_km(la, oa, lb, ob)
+        if kind == "measured":
+            dist = MEASURED_KM[frozenset((a, b))]
+        elif kind == "direct":
+            dist = haversine_km(la, oa, lb, ob)
+        else:
+            dist = l_shape_km(la, oa, lb, ob)
         for s, t in ((a, b), (b, a)):  # two-way roads
             rows.append({"from_site": s, "to_site": t, "distance_km": round(dist, 3),
                          "road": road, "link_type": kind, "confidence": conf})

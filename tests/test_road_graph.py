@@ -8,6 +8,7 @@ from data_processing.build_road_graph import (
 ROOT = Path(__file__).resolve().parents[1]
 SITES = ROOT / "data" / "processed" / "scats_sites.csv"
 EDGES = ROOT / "data" / "processed" / "scats_road_edges.csv"
+REVIEW = ROOT / "data" / "processed" / "scats_road_edges_review.csv"
 
 
 class TestRoadGraph(unittest.TestCase):
@@ -39,6 +40,25 @@ class TestRoadGraph(unittest.TestCase):
             saved = [(int(r["from_site"]), int(r["to_site"]), float(r["distance_km"])) for r in reader]
         built = [(r["from_site"], r["to_site"], r["distance_km"]) for r in self.rows]
         self.assertEqual(saved, built)
+
+    def test_reviewed_eastern_fwy_shortcut_uses_measured_distance(self):
+        # OSM review: no freeway link between the Burke Rd and Bulleen Rd
+        # interchanges, so 2825-2827 uses the measured local-street distance.
+        row = next(r for r in self.rows if (r["from_site"], r["to_site"]) == (2825, 2827))
+        self.assertEqual(row["link_type"], "measured")
+        self.assertAlmostEqual(row["distance_km"], 2.258)
+        self.assertNotIn("Eastern Fwy", row["road"])
+
+    def test_review_covers_every_link(self):
+        with open(REVIEW, newline="", encoding="utf-8") as f:
+            review = list(csv.DictReader(f))
+        reviewed = {frozenset((int(r["site_a"]), int(r["site_b"]))) for r in review}
+        self.assertEqual(reviewed, {frozenset((a, b)) for a, b, *_ in ROAD_LINKS})
+        self.assertTrue(all(r["status"] for r in review))
+        by_pair = {frozenset((int(r["site_a"]), int(r["site_b"]))): r for r in review}
+        for a, b, *_ in ROAD_LINKS:   # graph distance recorded in the review matches the graph
+            built = next(x["distance_km"] for x in self.rows if (x["from_site"], x["to_site"]) == (a, b))
+            self.assertAlmostEqual(float(by_pair[frozenset((a, b))]["graph_km_now"]), built)
 
 
 if __name__ == "__main__":

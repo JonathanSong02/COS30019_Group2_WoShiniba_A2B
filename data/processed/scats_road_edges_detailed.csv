@@ -10,9 +10,9 @@ from_site,to_site,distance_km,road,link_type,confidence
 2820,2825,2.892,Eastern Fwy,direct,medium
 2820,3662,1.598,Princess St,direct,high
 2825,2820,2.892,Eastern Fwy,direct,medium
-2825,2827,1.451,Eastern Fwy,direct,medium
+2825,2827,2.258,"Burke Rd + local streets (The Boulevard, Aquila St)",measured,medium
 2825,4030,1.003,Burke Rd,direct,high
-2827,2825,1.451,Eastern Fwy,direct,medium
+2827,2825,2.258,"Burke Rd + local streets (The Boulevard, Aquila St)",measured,medium
 2827,4051,1.548,Bulleen Rd,direct,high
 2846,970,3.042,High St / High Street Rd,direct,medium
 2846,4043,2.025,Burke Rd + High St (Glen Iris),junction,medium

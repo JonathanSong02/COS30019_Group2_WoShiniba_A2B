@@ -1,0 +1,795 @@
+{
+ "route 2825->4030": {
+  "km": 1.4,
+  "minutes": 1.96,
+  "roads": "Burke Rd"
+ },
+ "route 4030->2825": {
+  "km": 1.12,
+  "minutes": 1.5,
+  "roads": "Burke Rd"
+ },
+ "route 4030->4032": {
+  "km": 0.981,
+  "minutes": 1.44,
+  "roads": "Burke Rd+High St"
+ },
+ "route 4032->4030": {
+  "km": 0.981,
+  "minutes": 1.45,
+  "roads": "Burke Rd+High St"
+ },
+ "route 4032->4034": {
+  "km": 1.076,
+  "minutes": 1.41,
+  "roads": "Burke Rd"
+ },
+ "route 4034->4032": {
+  "km": 1.384,
+  "minutes": 2.35,
+  "roads": "Burke Rd"
+ },
+ "route 4034->4035": {
+  "km": 0.701,
+  "minutes": 0.98,
+  "roads": "Burke Rd"
+ },
+ "route 4035->4034": {
+  "km": 0.706,
+  "minutes": 1.47,
+  "roads": "Burke Rd"
+ },
+ "route 4035->3120": {
+  "km": 0.536,
+  "minutes": 0.77,
+  "roads": "Burke Rd"
+ },
+ "route 3120->4035": {
+  "km": 0.536,
+  "minutes": 0.77,
+  "roads": "Burke Rd"
+ },
+ "route 3120->4040": {
+  "km": 1.122,
+  "minutes": 2.29,
+  "roads": "Burke Rd"
+ },
+ "route 4040->3120": {
+  "km": 1.122,
+  "minutes": 2.28,
+  "roads": "Burke Rd"
+ },
+ "route 4040->4043": {
+  "km": 1.609,
+  "minutes": 2.47,
+  "roads": "Burke Rd"
+ },
+ "route 4043->4040": {
+  "km": 1.609,
+  "minutes": 2.42,
+  "roads": "Burke Rd"
+ },
+ "route 2200->3126": {
+  "km": 1.473,
+  "minutes": 2.23,
+  "roads": "Union Rd+Canterbury Rd"
+ },
+ "route 3126->2200": {
+  "km": 1.473,
+  "minutes": 2.29,
+  "roads": "Union Rd+Canterbury Rd"
+ },
+ "route 3126->3682": {
+  "km": 1.087,
+  "minutes": 1.46,
+  "roads": "Warrigal Rd"
+ },
+ "route 3682->3126": {
+  "km": 1.087,
+  "minutes": 1.52,
+  "roads": "Warrigal Rd"
+ },
+ "route 3682->2000": {
+  "km": 1.625,
+  "minutes": 2.16,
+  "roads": "Warrigal Rd"
+ },
+ "route 2000->3682": {
+  "km": 1.899,
+  "minutes": 3.03,
+  "roads": "Warrigal Rd"
+ },
+ "route 2000->3685": {
+  "km": 0.655,
+  "minutes": 1.39,
+  "roads": "Warrigal Rd+Hyslop St+Toorak Rd"
+ },
+ "route 3685->2000": {
+  "km": 0.336,
+  "minutes": 0.58,
+  "roads": "Warrigal Rd"
+ },
+ "route 3685->970": {
+  "km": 1.397,
+  "minutes": 2.01,
+  "roads": "Warrigal Rd"
+ },
+ "route 970->3685": {
+  "km": 1.639,
+  "minutes": 2.4,
+  "roads": "Warrigal Rd"
+ },
+ "route 3120->3122": {
+  "km": 0.631,
+  "minutes": 0.91,
+  "roads": "Canterbury Rd"
+ },
+ "route 3122->3120": {
+  "km": 0.631,
+  "minutes": 0.85,
+  "roads": "Canterbury Rd"
+ },
+ "route 3122->3127": {
+  "km": 1.237,
+  "minutes": 1.61,
+  "roads": "Canterbury Rd"
+ },
+ "route 3127->3122": {
+  "km": 1.237,
+  "minutes": 1.61,
+  "roads": "Canterbury Rd"
+ },
+ "route 3127->3126": {
+  "km": 1.842,
+  "minutes": 2.44,
+  "roads": "Canterbury Rd"
+ },
+ "route 3126->3127": {
+  "km": 1.842,
+  "minutes": 2.49,
+  "roads": "Canterbury Rd"
+ },
+ "route 3180->4057": {
+  "km": 0.976,
+  "minutes": 1.29,
+  "roads": "Balwyn Rd"
+ },
+ "route 4057->3180": {
+  "km": 0.976,
+  "minutes": 1.29,
+  "roads": "Balwyn Rd"
+ },
+ "route 4057->4063": {
+  "km": 1.064,
+  "minutes": 1.43,
+  "roads": "Balwyn Rd"
+ },
+ "route 4063->4057": {
+  "km": 1.064,
+  "minutes": 1.48,
+  "roads": "Balwyn Rd"
+ },
+ "route 4063->3127": {
+  "km": 1.237,
+  "minutes": 1.77,
+  "roads": "Balwyn Rd"
+ },
+ "route 3127->4063": {
+  "km": 1.237,
+  "minutes": 1.77,
+  "roads": "Balwyn Rd"
+ },
+ "route 3662->4324": {
+  "km": 1.051,
+  "minutes": 2.07,
+  "roads": "Cotham Rd+Glenferrie Rd+High St"
+ },
+ "route 4324->3662": {
+  "km": 1.216,
+  "minutes": 2.22,
+  "roads": "Cotham Rd+Wellington St+Gellibrand St"
+ },
+ "route 4324->4034": {
+  "km": 2.021,
+  "minutes": 2.64,
+  "roads": "Cotham Rd"
+ },
+ "route 4034->4324": {
+  "km": 2.511,
+  "minutes": 4.36,
+  "roads": "Cotham Rd"
+ },
+ "route 4034->4063": {
+  "km": 2.149,
+  "minutes": 3.39,
+  "roads": "Whitehorse Rd"
+ },
+ "route 4063->4034": {
+  "km": 1.84,
+  "minutes": 2.5,
+  "roads": "Whitehorse Rd"
+ },
+ "route 4063->2200": {
+  "km": 1.606,
+  "minutes": 2.13,
+  "roads": "Whitehorse Rd"
+ },
+ "route 2200->4063": {
+  "km": 1.606,
+  "minutes": 2.13,
+  "roads": "Whitehorse Rd"
+ },
+ "route 4321->4032": {
+  "km": 1.081,
+  "minutes": 1.45,
+  "roads": "Harp Rd"
+ },
+ "route 4032->4321": {
+  "km": 1.081,
+  "minutes": 1.5,
+  "roads": "Harp Rd"
+ },
+ "route 4032->4057": {
+  "km": 1.854,
+  "minutes": 2.57,
+  "roads": "Belmore Rd"
+ },
+ "route 4057->4032": {
+  "km": 1.854,
+  "minutes": 2.57,
+  "roads": "Belmore Rd"
+ },
+ "route 3001->3662": {
+  "km": 0.811,
+  "minutes": 1.27,
+  "roads": "High Street South"
+ },
+ "route 3662->3001": {
+  "km": 0.833,
+  "minutes": 1.44,
+  "roads": "High Street South"
+ },
+ "route 3662->4335": {
+  "km": 0.753,
+  "minutes": 1.14,
+  "roads": "High St"
+ },
+ "route 4335->3662": {
+  "km": 1.133,
+  "minutes": 2.0,
+  "roads": "High St+Fenton Avenue"
+ },
+ "route 4335->4321": {
+  "km": 1.383,
+  "minutes": 1.95,
+  "roads": "High St"
+ },
+ "route 4321->4335": {
+  "km": 1.421,
+  "minutes": 1.95,
+  "roads": "High St"
+ },
+ "route 4321->4030": {
+  "km": 1.215,
+  "minutes": 1.52,
+  "roads": "High St"
+ },
+ "route 4030->4321": {
+  "km": 1.251,
+  "minutes": 1.71,
+  "roads": "High St"
+ },
+ "route 4030->4051": {
+  "km": 0.767,
+  "minutes": 1.09,
+  "roads": "Doncaster Rd+High St"
+ },
+ "route 4051->4030": {
+  "km": 0.767,
+  "minutes": 1.09,
+  "roads": "Doncaster Rd+High St"
+ },
+ "route 4051->3180": {
+  "km": 1.262,
+  "minutes": 1.64,
+  "roads": "Doncaster Rd"
+ },
+ "route 3180->4051": {
+  "km": 1.26,
+  "minutes": 1.6,
+  "roads": "Doncaster Rd"
+ },
+ "snap 4051 Bulleen Road": [
+  [
+   -37.7925178,
+   145.0706019
+  ],
+  28.287108515910315
+ ],
+ "snap 2827 Bulleen Road": [
+  [
+   -37.779946,
+   145.0785133
+  ],
+  26.881860182691373
+ ],
+ "route 4051->2827": {
+  "km": 1.636,
+  "minutes": 2.54,
+  "roads": "Bulleen Rd"
+ },
+ "route 2827->4051": {
+  "km": 1.688,
+  "minutes": 2.21,
+  "roads": "Bulleen Rd"
+ },
+ "snap 2820 Princess Street": [
+  [
+   -37.7932726,
+   145.031514
+  ],
+  49.30195202572623
+ ],
+ "snap 2825 Burke Road": [
+  [
+   -37.785069,
+   145.063399
+  ],
+  7.636352668203349
+ ],
+ "route 2820->2825": {
+  "km": 4.426,
+  "minutes": 4.96,
+  "roads": "Eastern Fwy"
+ },
+ "route 2825->2820": {
+  "km": 3.4,
+  "minutes": 3.4,
+  "roads": "Eastern Fwy+Eastern Freeway Onramp+Chandler Highway Offramp"
+ },
+ "route 2825->2827": {
+  "km": 2.258,
+  "minutes": 3.91,
+  "roads": "Bulleen Rd+Aquila St"
+ },
+ "route 2827->2825": {
+  "km": 2.628,
+  "minutes": 4.47,
+  "roads": "Bulleen Rd+Aquila St+Burke Rd"
+ },
+ "route 2820->3662": {
+  "km": 2.321,
+  "minutes": 3.35,
+  "roads": "Princess St+High Street South"
+ },
+ "route 3662->2820": {
+  "km": 2.062,
+  "minutes": 2.63,
+  "roads": "Princess St+Willsmere Rd+Earl St"
+ },
+ "route 3662->3002": {
+  "km": 0.727,
+  "minutes": 1.2,
+  "roads": "Denmark St"
+ },
+ "route 3002->3662": {
+  "km": 0.702,
+  "minutes": 1.17,
+  "roads": "Denmark St"
+ },
+ "route 3002->4263": {
+  "km": 0.887,
+  "minutes": 1.18,
+  "roads": "Power St"
+ },
+ "route 4263->3002": {
+  "km": 0.888,
+  "minutes": 1.23,
+  "roads": "Power St"
+ },
+ "route 3001->4262": {
+  "km": 1.024,
+  "minutes": 1.4,
+  "roads": "Church St"
+ },
+ "route 4262->3001": {
+  "km": 1.665,
+  "minutes": 2.41,
+  "roads": "Church St+Bridge Rd"
+ },
+ "route 4821->3001": {
+  "km": 1.253,
+  "minutes": 1.74,
+  "roads": "Barkers Rd+Victoria St"
+ },
+ "route 3001->4821": {
+  "km": 1.25,
+  "minutes": 1.77,
+  "roads": "Barkers Rd+Victoria St"
+ },
+ "route 3001->3002": {
+  "km": 0.37,
+  "minutes": 0.49,
+  "roads": "Barkers Rd"
+ },
+ "route 3002->3001": {
+  "km": 0.37,
+  "minutes": 0.49,
+  "roads": "Barkers Rd"
+ },
+ "route 3002->4035": {
+  "km": 2.881,
+  "minutes": 3.98,
+  "roads": "Barkers Rd"
+ },
+ "route 4035->3002": {
+  "km": 2.889,
+  "minutes": 3.91,
+  "roads": "Barkers Rd"
+ },
+ "route 4262->4263": {
+  "km": 1.577,
+  "minutes": 2.38,
+  "roads": "Burwood Rd+Bridge Rd"
+ },
+ "route 4263->4262": {
+  "km": 1.174,
+  "minutes": 1.9,
+  "roads": "Burwood Rd+Church St+Wood St"
+ },
+ "route 4263->4264": {
+  "km": 0.808,
+  "minutes": 1.29,
+  "roads": "Burwood Rd"
+ },
+ "route 4264->4263": {
+  "km": 0.808,
+  "minutes": 1.18,
+  "roads": "Burwood Rd"
+ },
+ "route 4264->4266": {
+  "km": 0.855,
+  "minutes": 1.32,
+  "roads": "Burwood Rd"
+ },
+ "route 4266->4264": {
+  "km": 0.855,
+  "minutes": 1.32,
+  "roads": "Burwood Rd"
+ },
+ "route 4266->4040": {
+  "km": 1.652,
+  "minutes": 2.86,
+  "roads": "Camberwell Rd+Harold St+Burke Rd+Burwood Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4040->4266": {
+  "km": 1.412,
+  "minutes": 2.43,
+  "roads": "Camberwell Rd+Burwood Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4324->4264": {
+  "km": 1.681,
+  "minutes": 3.03,
+  "roads": "Glenferrie Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4264->4324": {
+  "km": 1.657,
+  "minutes": 2.86,
+  "roads": "Glenferrie Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4264->4270": {
+  "km": 0.693,
+  "minutes": 1.11,
+  "roads": "Glenferrie Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4270->4264": {
+  "km": 0.693,
+  "minutes": 1.11,
+  "roads": "Glenferrie Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4812->4270": {
+  "km": 1.61,
+  "minutes": 2.27,
+  "roads": "Riversdale Rd+Wallen Rd+Swan St",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4270->4812": {
+  "km": 1.825,
+  "minutes": 2.6,
+  "roads": "Riversdale Rd+Wallen Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4270->4272": {
+  "km": 1.205,
+  "minutes": 1.76,
+  "roads": "Riversdale Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4272->4270": {
+  "km": 1.205,
+  "minutes": 1.76,
+  "roads": "Riversdale Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4272->4040": {
+  "km": 1.112,
+  "minutes": 2.35,
+  "roads": "Riversdale Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4040->4272": {
+  "km": 0.808,
+  "minutes": 1.63,
+  "roads": "Riversdale Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4040->3804": {
+  "km": 1.465,
+  "minutes": 2.27,
+  "roads": "Seymour Grove+Trafalgar Rd+Burke Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 3804->4040": {
+  "km": 0.625,
+  "minutes": 1.4,
+  "roads": "Riversdale Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 3804->3682": {
+  "km": 3.068,
+  "minutes": 4.01,
+  "roads": "Riversdale Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 3682->3804": {
+  "km": 3.068,
+  "minutes": 4.01,
+  "roads": "Riversdale Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 3804->3812": {
+  "km": 0.482,
+  "minutes": 0.8,
+  "roads": "Trafalgar Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 3812->3804": {
+  "km": 0.462,
+  "minutes": 0.61,
+  "roads": "Trafalgar Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "snap 4040 Camberwell Road": [
+  [
+   -37.831362,
+   145.0567714
+  ],
+  7.592572318304438
+ ],
+ "snap 3812 Camberwell Road": [
+  [
+   -37.8360059,
+   145.0621537
+  ],
+  4.654885465157624
+ ],
+ "route 4040->3812": {
+  "km": 0.7,
+  "minutes": 1.5,
+  "roads": "Camberwell Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 3812->4040": {
+  "km": 0.7,
+  "minutes": 1.5,
+  "roads": "Camberwell Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4272->4273": {
+  "km": 1.781,
+  "minutes": 2.75,
+  "roads": "Tooronga Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4273->4272": {
+  "km": 1.7,
+  "minutes": 2.76,
+  "roads": "Tooronga Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4273->4043": {
+  "km": 0.771,
+  "minutes": 1.26,
+  "roads": "Toorak Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4043->4273": {
+  "km": 0.892,
+  "minutes": 1.85,
+  "roads": "Toorak Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4043->2000": {
+  "km": 3.714,
+  "minutes": 5.16,
+  "roads": "Toorak Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 2000->4043": {
+  "km": 3.7,
+  "minutes": 5.07,
+  "roads": "Toorak Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "snap 2846 High Street": [
+  [
+   -37.8600017,
+   145.0590936
+  ],
+  12.597062535108527
+ ],
+ "snap 970 High Street Road": [
+  [
+   -37.8657968,
+   145.0928821
+  ],
+  5.477926087646511
+ ],
+ "route 2846->970": {
+  "km": 3.126,
+  "minutes": 4.28,
+  "roads": "High St",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 970->2846": {
+  "km": 3.15,
+  "minutes": 4.47,
+  "roads": "High Street Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "snap 4043 Burke Road": [
+  [
+   -37.8456982,
+   145.0539731
+  ],
+  1.9556161233157576
+ ],
+ "route 4043->2846": {
+  "km": 1.913,
+  "minutes": 2.37,
+  "roads": "Burke Rd+High Street Off Ramp+Monash Fwy+Monash Freeway On Ramp",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 2846->4043": {
+  "km": 1.883,
+  "minutes": 2.33,
+  "roads": "Burke Rd+Monash Fwy+Burke Road Off Ramp",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 3812->4043": {
+  "km": 2.652,
+  "minutes": 4.44,
+  "roads": "Burke Rd+Seymour Grove",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4043->3812": {
+  "km": 1.726,
+  "minutes": 2.39,
+  "roads": "Burke Rd+Seymour Grove",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 3812->2000": {
+  "km": 4.091,
+  "minutes": 6.47,
+  "roads": "Toorak Rd+Camberwell Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 2000->3812": {
+  "km": 3.566,
+  "minutes": 4.88,
+  "roads": "Camberwell Rd+Toorak Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 3120->4266": {
+  "km": 1.589,
+  "minutes": 2.12,
+  "roads": "Rathmines Rd+Auburn Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4266->3120": {
+  "km": 1.609,
+  "minutes": 2.23,
+  "roads": "Rathmines Rd+Auburn Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4266->4270": {
+  "km": 1.521,
+  "minutes": 2.1,
+  "roads": "Riversdale Rd+Auburn Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4270->4266": {
+  "km": 1.521,
+  "minutes": 2.21,
+  "roads": "Riversdale Rd+Auburn Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4266->4272": {
+  "km": 1.043,
+  "minutes": 1.56,
+  "roads": "Auburn Rd+Riversdale Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4272->4266": {
+  "km": 1.043,
+  "minutes": 1.56,
+  "roads": "Auburn Rd+Riversdale Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4263->4270": {
+  "km": 1.452,
+  "minutes": 2.02,
+  "roads": "Riversdale Rd+Power St",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4270->4263": {
+  "km": 1.474,
+  "minutes": 1.97,
+  "roads": "Riversdale Rd+Power St",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4263->4812": {
+  "km": 1.654,
+  "minutes": 2.39,
+  "roads": "Power St+Wallen Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4812->4263": {
+  "km": 1.392,
+  "minutes": 1.93,
+  "roads": "Power St+Wallen Rd+Swan St",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4262->4821": {
+  "km": 1.636,
+  "minutes": 2.38,
+  "roads": "Burnley St+Bridge Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4821->4262": {
+  "km": 1.711,
+  "minutes": 2.61,
+  "roads": "Burnley St+Bridge Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4821->4812": {
+  "km": 2.912,
+  "minutes": 4.23,
+  "roads": "Burnley St+Swan St",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4812->4821": {
+  "km": 2.625,
+  "minutes": 3.82,
+  "roads": "Burnley St+Swan St",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4270->4273": {
+  "km": 2.986,
+  "minutes": 4.48,
+  "roads": "Auburn Rd+Riversdale Rd",
+  "server": "https://router.project-osrm.org"
+ },
+ "route 4273->4270": {
+  "km": 2.905,
+  "minutes": 4.51,
+  "roads": "Tooronga Rd+Riversdale Rd",
+  "server": "https://router.project-osrm.org"
+ }
+}
