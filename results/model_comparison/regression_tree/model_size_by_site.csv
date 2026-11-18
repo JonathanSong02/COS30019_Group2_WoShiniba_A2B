@@ -1,0 +1,121 @@
+model,scats_site,horizon_minutes,file,file_kb,learned_parameters,tree_leaves
+GRU,970,15,gru_site_970_h15_s8.pt,16.22,3393,
+LSTM,970,15,lstm_site_970_h15_s8.pt,20.61,4513,
+Regression Tree,970,15,rt_site_970_h15_s8_tree.json,10.57,352,118
+GRU,2000,15,gru_site_2000_h15_s8.pt,16.24,3393,
+LSTM,2000,15,lstm_site_2000_h15_s8.pt,20.62,4513,
+Regression Tree,2000,15,rt_site_2000_h15_s8_tree.json,19.17,640,214
+GRU,2200,15,gru_site_2200_h15_s8.pt,16.24,3393,
+LSTM,2200,15,lstm_site_2200_h15_s8.pt,20.62,4513,
+Regression Tree,2200,15,rt_site_2200_h15_s8_tree.json,13.24,436,146
+GRU,2820,15,gru_site_2820_h15_s8.pt,16.24,3393,
+LSTM,2820,15,lstm_site_2820_h15_s8.pt,20.62,4513,
+Regression Tree,2820,15,rt_site_2820_h15_s8_tree.json,13.84,454,152
+GRU,2825,15,gru_site_2825_h15_s8.pt,16.24,3393,
+LSTM,2825,15,lstm_site_2825_h15_s8.pt,20.62,4513,
+Regression Tree,2825,15,rt_site_2825_h15_s8_tree.json,12.7,415,139
+GRU,2827,15,gru_site_2827_h15_s8.pt,16.24,3393,
+LSTM,2827,15,lstm_site_2827_h15_s8.pt,20.62,4513,
+Regression Tree,2827,15,rt_site_2827_h15_s8_tree.json,13.93,463,155
+GRU,2846,15,gru_site_2846_h15_s8.pt,16.24,3393,
+LSTM,2846,15,lstm_site_2846_h15_s8.pt,20.62,4513,
+Regression Tree,2846,15,rt_site_2846_h15_s8_tree.json,13.91,457,153
+GRU,3001,15,gru_site_3001_h15_s8.pt,16.24,3393,
+LSTM,3001,15,lstm_site_3001_h15_s8.pt,20.62,4513,
+Regression Tree,3001,15,rt_site_3001_h15_s8_tree.json,4.38,145,49
+GRU,3002,15,gru_site_3002_h15_s8.pt,16.24,3393,
+LSTM,3002,15,lstm_site_3002_h15_s8.pt,20.62,4513,
+Regression Tree,3002,15,rt_site_3002_h15_s8_tree.json,20.07,667,223
+GRU,3120,15,gru_site_3120_h15_s8.pt,16.24,3393,
+LSTM,3120,15,lstm_site_3120_h15_s8.pt,20.62,4513,
+Regression Tree,3120,15,rt_site_3120_h15_s8_tree.json,13.29,442,148
+GRU,3122,15,gru_site_3122_h15_s8.pt,16.24,3393,
+LSTM,3122,15,lstm_site_3122_h15_s8.pt,20.62,4513,
+Regression Tree,3122,15,rt_site_3122_h15_s8_tree.json,14.82,490,164
+GRU,3126,15,gru_site_3126_h15_s8.pt,16.24,3393,
+LSTM,3126,15,lstm_site_3126_h15_s8.pt,20.62,4513,
+Regression Tree,3126,15,rt_site_3126_h15_s8_tree.json,5.62,187,63
+GRU,3127,15,gru_site_3127_h15_s8.pt,16.24,3393,
+LSTM,3127,15,lstm_site_3127_h15_s8.pt,20.62,4513,
+Regression Tree,3127,15,rt_site_3127_h15_s8_tree.json,5.37,178,60
+GRU,3180,15,gru_site_3180_h15_s8.pt,16.24,3393,
+LSTM,3180,15,lstm_site_3180_h15_s8.pt,20.62,4513,
+Regression Tree,3180,15,rt_site_3180_h15_s8_tree.json,10.38,340,114
+GRU,3662,15,gru_site_3662_h15_s8.pt,16.24,3393,
+LSTM,3662,15,lstm_site_3662_h15_s8.pt,20.62,4513,
+Regression Tree,3662,15,rt_site_3662_h15_s8_tree.json,18.93,628,210
+GRU,3682,15,gru_site_3682_h15_s8.pt,16.24,3393,
+LSTM,3682,15,lstm_site_3682_h15_s8.pt,20.62,4513,
+Regression Tree,3682,15,rt_site_3682_h15_s8_tree.json,14.07,466,156
+GRU,3685,15,gru_site_3685_h15_s8.pt,16.24,3393,
+LSTM,3685,15,lstm_site_3685_h15_s8.pt,20.62,4513,
+Regression Tree,3685,15,rt_site_3685_h15_s8_tree.json,4.87,160,54
+GRU,3804,15,gru_site_3804_h15_s8.pt,16.24,3393,
+LSTM,3804,15,lstm_site_3804_h15_s8.pt,20.62,4513,
+Regression Tree,3804,15,rt_site_3804_h15_s8_tree.json,13.81,457,153
+GRU,3812,15,gru_site_3812_h15_s8.pt,16.24,3393,
+LSTM,3812,15,lstm_site_3812_h15_s8.pt,20.62,4513,
+Regression Tree,3812,15,rt_site_3812_h15_s8_tree.json,5.66,187,63
+GRU,4030,15,gru_site_4030_h15_s8.pt,16.24,3393,
+LSTM,4030,15,lstm_site_4030_h15_s8.pt,20.62,4513,
+Regression Tree,4030,15,rt_site_4030_h15_s8_tree.json,5.11,169,57
+GRU,4032,15,gru_site_4032_h15_s8.pt,16.24,3393,
+LSTM,4032,15,lstm_site_4032_h15_s8.pt,20.62,4513,
+Regression Tree,4032,15,rt_site_4032_h15_s8_tree.json,5.35,178,60
+GRU,4034,15,gru_site_4034_h15_s8.pt,16.24,3393,
+LSTM,4034,15,lstm_site_4034_h15_s8.pt,20.62,4513,
+Regression Tree,4034,15,rt_site_4034_h15_s8_tree.json,10.69,355,119
+GRU,4035,15,gru_site_4035_h15_s8.pt,16.24,3393,
+LSTM,4035,15,lstm_site_4035_h15_s8.pt,20.62,4513,
+Regression Tree,4035,15,rt_site_4035_h15_s8_tree.json,20.18,670,224
+GRU,4040,15,gru_site_4040_h15_s8.pt,16.24,3393,
+LSTM,4040,15,lstm_site_4040_h15_s8.pt,20.62,4513,
+Regression Tree,4040,15,rt_site_4040_h15_s8_tree.json,5.55,184,62
+GRU,4043,15,gru_site_4043_h15_s8.pt,16.24,3393,
+LSTM,4043,15,lstm_site_4043_h15_s8.pt,20.62,4513,
+Regression Tree,4043,15,rt_site_4043_h15_s8_tree.json,7.3,244,82
+GRU,4051,15,gru_site_4051_h15_s8.pt,16.24,3393,
+LSTM,4051,15,lstm_site_4051_h15_s8.pt,20.62,4513,
+Regression Tree,4051,15,rt_site_4051_h15_s8_tree.json,10.15,331,111
+GRU,4057,15,gru_site_4057_h15_s8.pt,16.24,3393,
+LSTM,4057,15,lstm_site_4057_h15_s8.pt,20.62,4513,
+Regression Tree,4057,15,rt_site_4057_h15_s8_tree.json,9.48,313,105
+GRU,4063,15,gru_site_4063_h15_s8.pt,16.24,3393,
+LSTM,4063,15,lstm_site_4063_h15_s8.pt,20.62,4513,
+Regression Tree,4063,15,rt_site_4063_h15_s8_tree.json,14.12,466,156
+GRU,4262,15,gru_site_4262_h15_s8.pt,16.24,3393,
+LSTM,4262,15,lstm_site_4262_h15_s8.pt,20.62,4513,
+Regression Tree,4262,15,rt_site_4262_h15_s8_tree.json,9.13,298,100
+GRU,4263,15,gru_site_4263_h15_s8.pt,16.24,3393,
+LSTM,4263,15,lstm_site_4263_h15_s8.pt,20.62,4513,
+Regression Tree,4263,15,rt_site_4263_h15_s8_tree.json,5.61,187,63
+GRU,4264,15,gru_site_4264_h15_s8.pt,16.24,3393,
+LSTM,4264,15,lstm_site_4264_h15_s8.pt,20.62,4513,
+Regression Tree,4264,15,rt_site_4264_h15_s8_tree.json,9.31,307,103
+GRU,4266,15,gru_site_4266_h15_s8.pt,16.24,3393,
+LSTM,4266,15,lstm_site_4266_h15_s8.pt,20.62,4513,
+Regression Tree,4266,15,rt_site_4266_h15_s8_tree.json,13.94,463,155
+GRU,4270,15,gru_site_4270_h15_s8.pt,16.24,3393,
+LSTM,4270,15,lstm_site_4270_h15_s8.pt,20.62,4513,
+Regression Tree,4270,15,rt_site_4270_h15_s8_tree.json,5.75,190,64
+GRU,4272,15,gru_site_4272_h15_s8.pt,16.24,3393,
+LSTM,4272,15,lstm_site_4272_h15_s8.pt,20.62,4513,
+Regression Tree,4272,15,rt_site_4272_h15_s8_tree.json,5.78,190,64
+GRU,4273,15,gru_site_4273_h15_s8.pt,16.24,3393,
+LSTM,4273,15,lstm_site_4273_h15_s8.pt,20.62,4513,
+Regression Tree,4273,15,rt_site_4273_h15_s8_tree.json,9.98,328,110
+GRU,4321,15,gru_site_4321_h15_s8.pt,16.24,3393,
+LSTM,4321,15,lstm_site_4321_h15_s8.pt,20.62,4513,
+Regression Tree,4321,15,rt_site_4321_h15_s8_tree.json,10.06,331,111
+GRU,4324,15,gru_site_4324_h15_s8.pt,16.24,3393,
+LSTM,4324,15,lstm_site_4324_h15_s8.pt,20.62,4513,
+Regression Tree,4324,15,rt_site_4324_h15_s8_tree.json,13.12,430,144
+GRU,4335,15,gru_site_4335_h15_s8.pt,16.24,3393,
+LSTM,4335,15,lstm_site_4335_h15_s8.pt,20.62,4513,
+Regression Tree,4335,15,rt_site_4335_h15_s8_tree.json,5.14,169,57
+GRU,4812,15,gru_site_4812_h15_s8.pt,16.24,3393,
+LSTM,4812,15,lstm_site_4812_h15_s8.pt,20.62,4513,
+Regression Tree,4812,15,rt_site_4812_h15_s8_tree.json,9.78,322,108
+GRU,4821,15,gru_site_4821_h15_s8.pt,16.24,3393,
+LSTM,4821,15,lstm_site_4821_h15_s8.pt,20.62,4513,
+Regression Tree,4821,15,rt_site_4821_h15_s8_tree.json,14.21,469,157

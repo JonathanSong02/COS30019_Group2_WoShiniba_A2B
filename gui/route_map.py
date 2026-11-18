@@ -142,7 +142,9 @@ def build_map_payload(
             continue
         drawn_routes.append({
             "rank": int(route.get("rank", i + 1)),
-            "colour": ROUTE_COLOURS[i],
+            # callers may colour/label routes themselves (e.g. one per model)
+            "colour": route.get("colour", ROUTE_COLOURS[i]),
+            "label": route.get("label", f"Route {int(route.get('rank', i + 1))}"),
             "minutes": round(float(route["travel_time_minutes"]), 2),
             "path": path,
             "points": [coords[s] for s in path],
@@ -190,7 +192,7 @@ const routeLayer = L.layerGroup().addTo(map);
   const w = r.rank === 1 ? 7 : 5;
   L.polyline(r.points, {color: "#ffffff", weight: w + 3, opacity: 0.9}).addTo(routeLayer);
   L.polyline(r.points, {color: r.colour, weight: w, opacity: 0.95})
-    .bindTooltip(`<b>Route ${r.rank}</b>: ${r.minutes.toFixed(2)} min<br>${r.path.join(" → ")}`, {sticky: true})
+    .bindTooltip(`<b>${r.label}</b>: ${r.minutes.toFixed(2)} min<br>${r.path.join(" → ")}`, {sticky: true})
     .addTo(routeLayer);
 });
 
@@ -215,7 +217,7 @@ const legend = L.control({position: "bottomright"});
 legend.onAdd = () => {
   const div = L.DomUtil.create("div", "legend");
   let h = D.model ? `<b>${D.model}</b><br>` : "";
-  D.routes.forEach(r => h += `<span class="sw" style="background:${r.colour}"></span>Route ${r.rank} · ${r.minutes.toFixed(1)} min<br>`);
+  D.routes.forEach(r => h += `<span class="sw" style="background:${r.colour}"></span>${r.label} · ${r.minutes.toFixed(1)} min<br>`);
   h += `<span class="sw" style="background:#6b6b6b"></span>Road link (map-reviewed)<br>`;
   h += `<span style="font-size:11px;color:#666">Sites shifted ${(D.offset.dlat*111320).toFixed(0)} m N, `
      + `${(D.offset.dlon*111320*Math.cos(37.82*Math.PI/180)).toFixed(0)} m E to match OSM.<br>`

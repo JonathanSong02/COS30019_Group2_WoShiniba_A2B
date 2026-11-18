@@ -1,0 +1,325 @@
+{
+  "feature_importance": {
+    "15": {
+      "sites": 40,
+      "mean_importance": {
+        "lag_1": 0.9760933890871076,
+        "lag_2": 0.0038990225317626012,
+        "lag_3": 0.0012989675322996413,
+        "lag_4": 0.001600107217912648,
+        "lag_5": 0.0024760880168047195,
+        "lag_6": 0.0032863869587100567,
+        "lag_7": 0.0032884809468091275,
+        "lag_8": 0.008057557708593668
+      },
+      "sites_where_lag_1_is_top": 40
+    },
+    "30": {
+      "sites": 40,
+      "mean_importance": {
+        "lag_1": 0.9435800491732026,
+        "lag_2": 0.004002009339208657,
+        "lag_3": 0.0033809609547952825,
+        "lag_4": 0.0027482684783242096,
+        "lag_5": 0.0058060885833774115,
+        "lag_6": 0.008062070056622492,
+        "lag_7": 0.010173283029388452,
+        "lag_8": 0.022247270385080894
+      },
+      "sites_where_lag_1_is_top": 40
+    },
+    "60": {
+      "sites": 40,
+      "mean_importance": {
+        "lag_1": 0.8528362473739104,
+        "lag_2": 0.007971524284859746,
+        "lag_3": 0.004521795323298,
+        "lag_4": 0.007230924218304057,
+        "lag_5": 0.009205030425144672,
+        "lag_6": 0.014582189680390443,
+        "lag_7": 0.019769260906263512,
+        "lag_8": 0.08388302778782916
+      },
+      "sites_where_lag_1_is_top": 40
+    }
+  },
+  "model_size_h15": {
+    "GRU": {
+      "sites": 40,
+      "median_file_kb": 16.24,
+      "median_learned_parameters": 3393.0
+    },
+    "LSTM": {
+      "sites": 40,
+      "median_file_kb": 20.62,
+      "median_learned_parameters": 4513.0
+    },
+    "Regression Tree": {
+      "sites": 40,
+      "median_file_kb": 10.265,
+      "median_learned_parameters": 335.5
+    }
+  },
+  "peak_offpeak_site_2000": [
+    {
+      "model": "GRU",
+      "scats_site": "2000",
+      "horizon_minutes": 15,
+      "period": "Peak",
+      "sample_count": 48,
+      "mae": 55.072797399014235,
+      "rmse": 68.12861544470833,
+      "nrmse": 0.05005776369586126,
+      "nrmse_percent": 5.005776369586126,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "LSTM",
+      "scats_site": "2000",
+      "horizon_minutes": 15,
+      "period": "Peak",
+      "sample_count": 48,
+      "mae": 67.8136102060477,
+      "rmse": 81.38983125143714,
+      "nrmse": 0.05980149329963984,
+      "nrmse_percent": 5.980149329963984,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "Regression Tree",
+      "scats_site": 2000,
+      "horizon_minutes": 15,
+      "period": "Peak",
+      "sample_count": 48,
+      "mae": 53.285631421048095,
+      "rmse": 76.73033959181782,
+      "nrmse": 0.05637791299913139,
+      "nrmse_percent": 5.637791299913139,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1361.0
+    },
+    {
+      "model": "GRU",
+      "scats_site": "2000",
+      "horizon_minutes": 15,
+      "period": "Off-Peak",
+      "sample_count": 432,
+      "mae": 41.50534461871117,
+      "rmse": 53.917941643070634,
+      "nrmse": 0.03961641615814907,
+      "nrmse_percent": 3.9616416158149073,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "LSTM",
+      "scats_site": "2000",
+      "horizon_minutes": 15,
+      "period": "Off-Peak",
+      "sample_count": 432,
+      "mae": 50.92516362627416,
+      "rmse": 65.47886590306999,
+      "nrmse": 0.04811084997183003,
+      "nrmse_percent": 4.811084997183003,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "Regression Tree",
+      "scats_site": 2000,
+      "horizon_minutes": 15,
+      "period": "Off-Peak",
+      "sample_count": 432,
+      "mae": 36.182740556850746,
+      "rmse": 50.925684308515734,
+      "nrmse": 0.03741784298935763,
+      "nrmse_percent": 3.7417842989357633,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1361.0
+    },
+    {
+      "model": "GRU",
+      "scats_site": "2000",
+      "horizon_minutes": 30,
+      "period": "Peak",
+      "sample_count": 48,
+      "mae": 59.752439043174185,
+      "rmse": 78.12748105956808,
+      "nrmse": 0.057404468878524684,
+      "nrmse_percent": 5.740446887852468,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "LSTM",
+      "scats_site": "2000",
+      "horizon_minutes": 30,
+      "period": "Peak",
+      "sample_count": 48,
+      "mae": 91.3417855327328,
+      "rmse": 114.59827368713887,
+      "nrmse": 0.08420152481801242,
+      "nrmse_percent": 8.420152481801242,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "Regression Tree",
+      "scats_site": 2000,
+      "horizon_minutes": 30,
+      "period": "Peak",
+      "sample_count": 48,
+      "mae": 61.552513227513224,
+      "rmse": 80.29615857371783,
+      "nrmse": 0.0589979122510785,
+      "nrmse_percent": 5.89979122510785,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1361.0
+    },
+    {
+      "model": "GRU",
+      "scats_site": "2000",
+      "horizon_minutes": 30,
+      "period": "Off-Peak",
+      "sample_count": 432,
+      "mae": 59.112835478343726,
+      "rmse": 78.23752711949736,
+      "nrmse": 0.05748532564667772,
+      "nrmse_percent": 5.748532564667772,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "LSTM",
+      "scats_site": "2000",
+      "horizon_minutes": 30,
+      "period": "Off-Peak",
+      "sample_count": 432,
+      "mae": 57.72108001870759,
+      "rmse": 77.1815616913774,
+      "nrmse": 0.056709450964258445,
+      "nrmse_percent": 5.670945096425845,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "Regression Tree",
+      "scats_site": 2000,
+      "horizon_minutes": 30,
+      "period": "Off-Peak",
+      "sample_count": 432,
+      "mae": 45.786120296884185,
+      "rmse": 67.24238575085941,
+      "nrmse": 0.04940660231510611,
+      "nrmse_percent": 4.940660231510611,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1361.0
+    },
+    {
+      "model": "GRU",
+      "scats_site": "2000",
+      "horizon_minutes": 60,
+      "period": "Peak",
+      "sample_count": 48,
+      "mae": 143.80830872183046,
+      "rmse": 169.1684263406893,
+      "nrmse": 0.12429715553863757,
+      "nrmse_percent": 12.429715553863756,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "LSTM",
+      "scats_site": "2000",
+      "horizon_minutes": 60,
+      "period": "Peak",
+      "sample_count": 48,
+      "mae": 159.70992637301484,
+      "rmse": 186.443848644249,
+      "nrmse": 0.13699033889152148,
+      "nrmse_percent": 13.69903388915215,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "Regression Tree",
+      "scats_site": 2000,
+      "horizon_minutes": 60,
+      "period": "Peak",
+      "sample_count": 48,
+      "mae": 78.27481243647527,
+      "rmse": 113.26943264165324,
+      "nrmse": 0.08322515256550568,
+      "nrmse_percent": 8.322515256550568,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1361.0
+    },
+    {
+      "model": "GRU",
+      "scats_site": "2000",
+      "horizon_minutes": 60,
+      "period": "Off-Peak",
+      "sample_count": 432,
+      "mae": 92.41972633912142,
+      "rmse": 118.84045398421564,
+      "nrmse": 0.08731848319857205,
+      "nrmse_percent": 8.731848319857205,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "LSTM",
+      "scats_site": "2000",
+      "horizon_minutes": 60,
+      "period": "Off-Peak",
+      "sample_count": 432,
+      "mae": 86.51230014481634,
+      "rmse": 110.62833431122056,
+      "nrmse": 0.08128459650720746,
+      "nrmse_percent": 8.128459650720746,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1360.9999811146408
+    },
+    {
+      "model": "Regression Tree",
+      "scats_site": 2000,
+      "horizon_minutes": 60,
+      "period": "Off-Peak",
+      "sample_count": 432,
+      "mae": 60.628444824617134,
+      "rmse": 93.92490727306564,
+      "nrmse": 0.06901168793024662,
+      "nrmse_percent": 6.901168793024662,
+      "nrmse_normalisation": "full_test_set_range",
+      "nrmse_denominator": 1361.0
+    }
+  ],
+  "last_value_baseline": {
+    "15": {
+      "sites": 40,
+      "mean_last_value_rmse": 46.04150191356201,
+      "mean_regression_tree_rmse": 40.50578716736561,
+      "sites_where_tree_beats_last_value": 39
+    },
+    "30": {
+      "sites": 40,
+      "mean_last_value_rmse": 67.15268085471133,
+      "mean_regression_tree_rmse": 48.4260916086477,
+      "sites_where_tree_beats_last_value": 40
+    },
+    "60": {
+      "sites": 40,
+      "mean_last_value_rmse": 110.16205494338699,
+      "mean_regression_tree_rmse": 65.2131248136689,
+      "sites_where_tree_beats_last_value": 40
+    }
+  },
+  "notes": {
+    "feature_importance": "sklearn feature_importances_, normalised to sum to 1 per site; lag_1 = most recent 15-minute reading",
+    "learned_parameters": "GRU/LSTM: one layer, hidden size 32, input 1, plus Linear(hidden, 1). Regression Tree: a feature and a threshold per split plus a value per leaf.",
+    "last_value_baseline": "Naive forecast = last observed reading, on the Regression Tree's own test windows (27-31 Oct).",
+    "peak_offpeak": "Same periods and NRMSE as evaluation/analyze_peak_offpeak.py (Anson); GRU/LSTM rows copied from its CSV."
+  }
+}

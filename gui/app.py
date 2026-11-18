@@ -16,7 +16,7 @@ from pathlib import Path
 import gradio as gr
 
 import main as backend
-from gui import prediction_view, route_map
+from gui import comparison_view, prediction_view, route_map
 
 ROOT = Path(__file__).resolve().parents[1]
 ROADS_DEFAULT = backend.DEFAULT_ROADS
@@ -27,6 +27,12 @@ VALID_MODELS = {"GRU": "gru", "LSTM": "lstm", "Regression Tree": "regression_tre
 # at five sites), and it is the morning peak, so the chart has a clear shape.
 DEFAULT_PREDICTION_TIME = "2006-10-30T08:00:00"
 PREDICTION_HEADERS = prediction_view.TABLE_HEADERS
+# Route comparison default: Mon 30 Oct 2006 20:00 (test split) with Clamp.
+# SCATS site volumes are totals over all approaches, so from 07:00 to 18:00
+# 26-37 of the 40 sites exceed 1,500 veh/h: "Reject" then gives no routes and
+# "Clamp" caps most sites to the same value, hiding the models' differences.
+# At 20:00 only 9 sites are over, so the forecasts actually shape the routes.
+DEFAULT_COMPARISON_TIME = "2006-10-30T20:00:00"
 
 
 def _site_id(value) -> int:
@@ -144,6 +150,72 @@ def run_prediction_view(site, as_of_time, model, horizon_minutes, sequence_lengt
         details = {**details, "actual_vehicles_per_15min": payload["actual"],
                    "error_vehicles_per_15min": round(volume - payload["actual"], 2)}
     return status, volume, details, chart, table
+
+
+def comparison_overview():
+    """Static part of the Model comparison tab: (headline, results table, charts)."""
+    results = comparison_view.load_results()
+    return (comparison_view.headline(results), comparison_view.summary_rows(results),
+            comparison_view.build_iframe(comparison_view.overview_specs(results), initial_height=1500))
+
+
+def run_actual_vs_predicted(site, horizon_minutes, day):
+    """Test-day chart for one site: actual traffic and each model's forecast."""
+    try:
+        site_id, horizon = _site_id(site), int(horizon_minutes)
+    except (ValueError, TypeError) as exc:
+        return f"⚠️ {exc}", ""
+    spec, notes = comparison_view.actual_vs_predicted_spec(site_id, horizon, str(day))
+    if spec is None:
+        return "⚠️ No saved test predictions for this choice. " + "; ".join(notes), ""
+    status = "Not shown: " + "; ".join(notes) if notes else ""
+    return status, comparison_view.build_iframe([spec], initial_height=420)
+
+
+def run_route_comparison(origin, destination, as_of_time, capacity_policy, route_count=5, road_file=None):
+    """Same trip and time under GRU, LSTM and Regression Tree (15 min ahead).
+
+    Returns (status, table rows, map HTML).
+    """
+    try:
+        start, end = _site_id(origin), _site_id(destination)
+        when = backend.valid_as_of(str(as_of_time).strip())
+        links = backend.load_verified_road_links(str(road_file or ROADS_DEFAULT))
+        coords = backend.load_site_coordinates(backend.DEFAULT_SITES)
+    except (FileNotFoundError, OSError, ValueError, TypeError, KeyError) as exc:
+        return f"⚠️ **Route comparison unavailable:** {exc}", [], route_map_html(road_file)
+    policy = "reject" if str(capacity_policy).startswith("Reject") else "clamp"
+    flow_site = backend.load_config().get("volume_used_for_edge", "origin")
+
+    def route_fn(label):
+        return backend.compute_traffic_routes(
+            origin=start, destination=end, as_of_time=when,
+            verified_road_links=links, site_coords=coords,
+            predictor=lambda site, t: backend.predict_traffic(
+                site, t, model_name=VALID_MODELS[label], horizon_minutes=15, sequence_length=8),
+            k=int(route_count), flow_site=flow_site, hourly_policy="steady_4x",
+            capacity_policy=policy, missing_site_policy="reject",
+        )
+
+    rows, by_model, notes = comparison_view.compare_routes(start, end, when, route_fn=route_fn, k=int(route_count))
+    best = {m: r[0] for m, r in by_model.items() if r}
+    if best:
+        parts = [f"{m} {r['travel_time_minutes']:.1f} min" for m, r in best.items()]
+        same = len({tuple(r["scats_sites"]) for r in best.values()}) == 1
+        status = (f"**Best route under each model** ({when:%a %d %b %H:%M}, 15 min ahead): " + ", ".join(parts) + ". "
+                  + ("All models choose the **same** best route." if same and len(best) > 1 else
+                     "The models choose **different** best routes; the map shows each in its model's colour."
+                     if len(best) > 1 else ""))
+    else:
+        status = "⚠️ **No model produced routes.**"
+    if notes:
+        status += "\n\n⚠️ Not available: " + "; ".join(notes)
+    if policy == "clamp":
+        status += "\n\nClamp is on: sites forecast above 1,500 veh/h are capped, which hides differences between models there."
+    map_html = route_map_html(road_file, comparison_view.best_routes_for_map(by_model),
+                              origin=start, destination=end,
+                              model_label=f"Best route per model · {when:%a %d %b %H:%M}")
+    return status, rows, map_html
 
 
 def run_routes(origin, destination, as_of_time, model, horizon_minutes,
@@ -343,6 +415,58 @@ def build_app() -> gr.Blocks:
                     "intersections, not along street curves. The map background needs internet; "
                     "route calculation itself works offline."
                 )
+            with gr.Tab("Model comparison"):
+                headline_md, summary_table, overview_html = comparison_overview()
+                gr.Markdown("### GRU vs LSTM vs Regression Tree\n" + headline_md)
+                gr.Markdown(
+                    "All numbers are on the same held-out test data (27–31 Oct 2006, 480 points per site) "
+                    "with an 8-reading lookback. Sources: `results/model_comparison/three_model/` "
+                    "(Anson's matched comparison) and `results/model_comparison/regression_tree/` "
+                    "(Regression Tree extras and the last-reading baseline).")
+                gr.HTML(overview_html)
+                gr.Markdown("#### Results table: network average at 15 min ahead\n"
+                            "Training time is per site (Regression Tree includes its hyper-parameter search). "
+                            "Model file and learned parameters are medians over sites.")
+                gr.Dataframe(headers=comparison_view.SUMMARY_HEADERS, value=summary_table, interactive=False,
+                             datatype=["str", "number", "number", "number", "number", "number", "number", "number"])
+
+                gr.Markdown("#### Actual vs predicted on a test day")
+                with gr.Row():
+                    cmp_site = gr.Dropdown(label="SCATS site", choices=sites, value=start_site,
+                                           allow_custom_value=True, scale=1)
+                    cmp_horizon = gr.Dropdown(label="Minutes ahead", choices=[15, 30, 60], value=15, scale=1,
+                                              info="30/60 min: all three models only at site 2000")
+                    cmp_day = gr.Dropdown(label="Test day", choices=list(comparison_view.TEST_DAYS),
+                                          value="2006-10-30", scale=1)
+                    cmp_btn = gr.Button("Show", variant="primary", scale=0)
+                cmp_status = gr.Markdown()
+                cmp_chart = gr.HTML()
+                cmp_btn.click(fn=run_actual_vs_predicted, inputs=[cmp_site, cmp_horizon, cmp_day],
+                              outputs=[cmp_status, cmp_chart])
+
+                gr.Markdown("#### Routes under each model\n"
+                            "The same trip and time with GRU, LSTM and Regression Tree forecasts "
+                            "(15 min ahead, full 40-site network).")
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        rc_origin = gr.Dropdown(label="Origin SCATS site", choices=sites, value=start_site,
+                                                allow_custom_value=True)
+                        rc_dest = gr.Dropdown(label="Destination SCATS site", choices=sites, value=dest_site,
+                                              allow_custom_value=True)
+                        rc_time = gr.Textbox(label="Last observed date/time", value=DEFAULT_COMPARISON_TIME,
+                                             info="Default 20:00: from 07:00 to 18:00 most site totals exceed 1,500 veh/h")
+                        rc_capacity = gr.Radio(label="Over-capacity policy", choices=[
+                            "Reject values above 1500 veh/hour", "Clamp to 1500 (research sensitivity only)"],
+                            value="Clamp to 1500 (research sensitivity only)")
+                        rc_btn = gr.Button("Compare routes", variant="primary")
+                    with gr.Column(scale=2):
+                        rc_status = gr.Markdown("Pick a trip and click **Compare routes**.")
+                        rc_map = gr.HTML()
+                        rc_table = gr.Dataframe(headers=comparison_view.ROUTE_HEADERS, value=[], interactive=False,
+                                                datatype=["str", "number", "str", "number", "str"],
+                                                label="Top routes under each model")
+                rc_btn.click(fn=run_route_comparison, inputs=[rc_origin, rc_dest, rc_time, rc_capacity],
+                             outputs=[rc_status, rc_table, rc_map])
     return app
 
 
