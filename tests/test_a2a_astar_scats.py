@@ -1,4 +1,4 @@
-"""Verify original A2A A* against Yen's first route on A2B SCATS graphs.
+"""Verify original A2A A* against A2B A* first route on A2B SCATS graphs.
 
 These are *synthetic*, within-capacity traffic inputs for a deterministic
 algorithm-integration check, NOT actual trained-model predictions.
@@ -57,7 +57,7 @@ class A2A_AStar_SCATS_IntegrationTests(unittest.TestCase):
         self.assertGreater(len(routes), 0)
         self.assertTrue(math.isclose(
             a2a_goal.path_cost, routes[0][1], rel_tol=1e-9, abs_tol=1e-7
-        ), msg=f"A* {a2a_goal.path_cost} vs Yen/Dijkstra {routes[0][1]}")
+        ), msg=f"A* {a2a_goal.path_cost} vs A2B A* {routes[0][1]}")
 
     def test_a2a_astar_matches_a2b_first_route_using_origin_flow(self):
         for origin, destination in [(2000, 3002), (3002, 2000), (970, 4812)]:

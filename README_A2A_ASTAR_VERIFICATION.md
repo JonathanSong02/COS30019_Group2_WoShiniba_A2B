@@ -14,7 +14,7 @@ python -m unittest discover -s tests -v
 ```
 
 The new tests compare the shortest route found by the **original A2A A***
-(`algorithms/astar.py`) against route 1 returned by A2B Yen/Dijkstra
+(`algorithms/astar.py`) against route 1 returned by A2B A*
 (`routing/top_k_routes.py`) using A2B's SCATS Graph adapter and flow-to-travel-time
 weights. They check three origin/destination pairs, in both origin-flow and
 destination-flow variants.

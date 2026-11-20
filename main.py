@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Callable
 
 from routing.scats_adapter import build_weighted_scats_graph
-from routing.top_k_routes import find_top_k_routes
+from routing.top_k_routes import METHODS as SEARCH_METHODS, search_routes
 from routing.travel_time import (
     CAPACITY_VEH_PER_HOUR,
     weights_from_road_links,
@@ -46,6 +46,8 @@ def load_config(path: str | Path = ROOT / "config.json") -> dict:
         raise ValueError("config.json default_model must be GRU, LSTM or Regression_Tree")
     if config.get("volume_used_for_edge", "origin") not in {"origin", "destination"}:
         raise ValueError("config.json volume_used_for_edge must be origin or destination")
+    if config.get("default_search_algorithm", "AS") not in SEARCH_METHODS:
+        raise ValueError("config.json default_search_algorithm must be DFS, BFS, GBFS, AS, CUS1 or CUS2")
     if config.get("flow_conversion", "per_approach") not in FLOW_CONVERSIONS:
         raise ValueError("config.json flow_conversion must be per_approach or site_total")
     return config
@@ -208,6 +210,7 @@ def compute_traffic_routes(
     missing_site_policy: str = "reject",
     flow_conversion: str = "per_approach",
     approach_counts: dict[int, int] | None = None,
+    search_algorithm: str = "AS",
 ) -> dict:
     """Convert per-site predicted 15-min counts to route costs, then rank routes.
 
@@ -322,7 +325,7 @@ def compute_traffic_routes(
         flow_site=flow_site, intersection_delay_s=intersection_delay_seconds,
     )
     graph = build_weighted_scats_graph(site_coords, edges)
-    routes = find_top_k_routes(graph, origin, destination, k=k)
+    routes, search_stats = search_routes(graph, origin, destination, k=k, algorithm=search_algorithm)
     return {
         "origin": origin,
         "destination": destination,
@@ -336,6 +339,10 @@ def compute_traffic_routes(
         ],
         "assumptions": {
             "flow_site": flow_site,
+            "search_algorithm": search_stats["algorithm"],
+            "search_nodes_expanded": search_stats["expanded"],
+            "search_cost_optimal": search_stats["cost_optimal"],
+            "search_optimality_note": ("Lowest-cost simple paths by predicted travel time" if search_stats["cost_optimal"] else "Algorithm-discovered alternatives; NOT guaranteed shortest by travel time"),
             "hourly_conversion": "4 x one predicted 15-minute count (steady-flow assumption)",
             "flow_conversion": flow_conversion,
             "flow_conversion_detail": (
@@ -388,6 +395,8 @@ def main(argv=None) -> int:
     p_route.add_argument("--roads", type=Path, default=DEFAULT_ROADS, help="Map-reviewed directed road CSV (default: Darren's scats_road_edges.csv)")
     p_route.add_argument("--sites", type=Path, default=DEFAULT_SITES)
     p_route.add_argument("--top-k", type=int, default=defaults.get("top_k_routes", 5))
+    p_route.add_argument("--search-algorithm", choices=SEARCH_METHODS, default=defaults.get("default_search_algorithm", "AS"),
+                         help="A2A search: DFS, BFS, GBFS, AS (A*), CUS1 (IDDFS), CUS2 (weighted IDA*)")
     p_route.add_argument("--flow-site", choices=["origin", "destination"], default=defaults.get("volume_used_for_edge", "origin"))
     p_route.add_argument("--hourly-policy", choices=["steady_4x"], required=True)
     p_route.add_argument("--flow-conversion", choices=list(FLOW_CONVERSIONS),
@@ -425,6 +434,7 @@ def main(argv=None) -> int:
                 intersection_delay_seconds=args.intersection_delay,
                 missing_site_policy=args.missing_site_policy,
                 flow_conversion=args.flow_conversion,
+                search_algorithm=args.search_algorithm,
             )
             result["model"] = args.model.upper()
             result["horizon_minutes"] = args.horizon

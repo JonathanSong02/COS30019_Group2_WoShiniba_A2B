@@ -172,7 +172,7 @@ def run_actual_vs_predicted(site, horizon_minutes, day):
     return status, comparison_view.build_iframe([spec], initial_height=420)
 
 
-def run_route_comparison(origin, destination, as_of_time, capacity_policy, route_count=5, road_file=None):
+def run_route_comparison(origin, destination, as_of_time, capacity_policy, route_count=5, road_file=None, search_algorithm="AS"):
     """Same trip and time under GRU, LSTM and Regression Tree (15 min ahead).
 
     Returns (status, table rows, map HTML).
@@ -195,6 +195,7 @@ def run_route_comparison(origin, destination, as_of_time, capacity_policy, route
                 site, t, model_name=VALID_MODELS[label], horizon_minutes=15, sequence_length=8),
             k=int(route_count), flow_site=flow_site, hourly_policy="steady_4x",
             capacity_policy=policy, missing_site_policy="reject",
+            search_algorithm=search_algorithm,
         )
 
     rows, by_model, notes = comparison_view.compare_routes(start, end, when, route_fn=route_fn, k=int(route_count))
@@ -202,7 +203,8 @@ def run_route_comparison(origin, destination, as_of_time, capacity_policy, route
     if best:
         parts = [f"{m} {r['travel_time_minutes']:.1f} min" for m, r in best.items()]
         same = len({tuple(r["scats_sites"]) for r in best.values()}) == 1
-        status = (f"**Best route under each model** ({when:%a %d %b %H:%M}, 15 min ahead): " + ", ".join(parts) + ". "
+        status = (f"**Best route under each model** using {search_algorithm} search "
+                  f"({when:%a %d %b %H:%M}, 15 min ahead): " + ", ".join(parts) + ". "
                   + ("All models choose the **same** best route." if same and len(best) > 1 else
                      "The models choose **different** best routes; the map shows each in its model's colour."
                      if len(best) > 1 else ""))
@@ -210,6 +212,8 @@ def run_route_comparison(origin, destination, as_of_time, capacity_policy, route
         status = "⚠️ **No model produced routes.**"
     if notes:
         status += "\n\n⚠️ Not available: " + "; ".join(notes)
+    if search_algorithm not in {"AS", "CUS2"}:
+        status += "\n\n⚠️ This algorithm does not guarantee the fastest travel-time routes."
     if policy == "clamp":
         status += "\n\nExperimental Clamp is on: sites forecast above 1,500 veh/h per approach are capped, which hides differences between models there."
     map_html = route_map_html(road_file, comparison_view.best_routes_for_map(by_model),
@@ -219,7 +223,7 @@ def run_route_comparison(origin, destination, as_of_time, capacity_policy, route
 
 
 def run_routes(origin, destination, as_of_time, model, horizon_minutes,
-               sequence_length, route_count, road_file, flow_site, capacity_policy, missing_site_policy="reject"):
+               sequence_length, route_count, road_file, flow_site, capacity_policy, missing_site_policy="reject", search_algorithm="AS"):
     """Route callback. Requires verified road connections and per-site models.
 
     Returns (status, route rows, details JSON, map HTML).
@@ -251,7 +255,7 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
             predictor=predictor,
             k=int(route_count), flow_site=str(flow_site).lower(),
             hourly_policy="steady_4x", capacity_policy=policy,
-            missing_site_policy=missing_site_policy,
+            missing_site_policy=missing_site_policy, search_algorithm=search_algorithm,
         )
         rows = [
             [route["rank"], " → ".join(str(s) for s in route["scats_sites"]),
@@ -269,7 +273,11 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
                       f"Excluded {result['assumptions']['excluded_road_link_count']} road-link rows. ")
         else:
             prefix = "✅ "
-        status = (prefix + f"**Computed {len(rows)} candidate route(s)** using {model} forecasts. "
+        method_note = ("Cost-optimal top routes" if result["assumptions"]["search_cost_optimal"]
+                       else "Method-discovered routes — NOT guaranteed fastest")
+        status = (prefix + f"**Computed {len(rows)} candidate route(s)** using {model} forecasts "
+                  f"and {search_algorithm} search ({method_note}; "
+                  f"{result['assumptions']['search_nodes_expanded']} expanded). "
                   "Hour flow assumes four identical future 15-minute counts (4× approximation), "
                   "divided by each site's number of approaches (flow on one road). " + note)
         if not rows:
@@ -305,8 +313,39 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
                 route_map_html(road_file, origin=start, destination=end))
 
 
+
+def gui_config_defaults(config: dict) -> tuple[str, int]:
+    """Use safe GUI defaults from config.json; fall back when invalid.
+
+    Model values may use display labels ("Regression Tree") or their backend
+    identifiers ("regression_tree"). The prediction and route tabs share
+    these defaults. Model coverage still depends on the saved checkpoints.
+    """
+    configured_model = config.get("default_model", "GRU")
+    model = "GRU"
+    if isinstance(configured_model, str):
+        candidate = configured_model.strip().casefold()
+        for label, backend_name in VALID_MODELS.items():
+            if candidate in (label.casefold(), backend_name.casefold()):
+                model = label
+                break
+
+    configured_horizon = config.get("prediction_horizon_minutes", 15)
+    try:
+        # bool is an int subclass, but True/False are not sensible horizons.
+        if isinstance(configured_horizon, bool):
+            raise ValueError("Boolean is not a horizon")
+        horizon = int(configured_horizon)
+    except (TypeError, ValueError, OverflowError):
+        horizon = 15
+    if horizon not in (15, 30, 60):
+        horizon = 15
+    return model, horizon
+
+
 def build_app() -> gr.Blocks:
     defaults = backend.load_config()
+    default_model, default_horizon = gui_config_defaults(defaults)
     sites = known_sites()
     start_site = "2000" if "2000" in sites else sites[0]
     dest_site = "3002" if "3002" in sites else sites[-1]
@@ -336,9 +375,9 @@ def build_app() -> gr.Blocks:
                                           value=DEFAULT_PREDICTION_TIME,
                                           info="Must be a 15-minute boundary. 27-31 Oct is the test set "
                                                "(unseen by the models); 24-28 Oct has gaps at five sites.")
-                        model = gr.Dropdown(label="ML model", choices=list(VALID_MODELS), value="GRU")
+                        model = gr.Dropdown(label="ML model", choices=list(VALID_MODELS), value=default_model)
                         horizon = gr.Dropdown(label="Forecast horizon (minutes)",
-                                              choices=[15, 30, 60], value=15,
+                                              choices=[15, 30, 60], value=default_horizon,
                                               info="Regression Tree: all sites at 15/30/60 min. GRU/LSTM: see Model coverage above")
                         seq = gr.Number(label="Historical lookback (15-minute intervals)",
                                         value=8, precision=0, minimum=1, maximum=96)
@@ -373,9 +412,13 @@ def build_app() -> gr.Blocks:
                         destination = gr.Dropdown(label="Destination SCATS site", choices=sites,
                                                   value=dest_site, allow_custom_value=True)
                         route_time = gr.Textbox(label="Last observed date/time", value=DEFAULT_COMPARISON_TIME,
-                                                info="Held-out test example; predicts the following 15-minute interval")
-                        route_model = gr.Dropdown(label="Prediction model", choices=list(VALID_MODELS), value="GRU")
-                        route_horizon = gr.Dropdown(label="Prediction horizon (min)", choices=[15, 30, 60], value=15)
+                                                info="Held-out test example. Choose 15, 30 or 60 minutes ahead; full-network GRU/LSTM coverage is currently available at 15 minutes.")
+                        route_model = gr.Dropdown(label="Prediction model", choices=list(VALID_MODELS), value=default_model)
+                        route_horizon = gr.Dropdown(label="Prediction horizon (min)", choices=[15, 30, 60], value=default_horizon)
+                        search_method = gr.Dropdown(
+                            label="A2A search algorithm", choices=["DFS", "BFS", "GBFS", "AS", "CUS1", "CUS2"],
+                            value=defaults.get("default_search_algorithm", "AS"),
+                            info="AS/A* and CUS2/weighted IDA* guarantee fastest top-five; others do not")
                         route_seq = gr.Number(label="Historical lookback", value=8, precision=0, minimum=1, maximum=96)
                         k = gr.Slider(label="Maximum routes", minimum=1, maximum=5, step=1, value=defaults.get("top_k_routes", 5))
                         roads = gr.Textbox(label="SCATS directed road CSV path (map-reviewed)", value=str(ROADS_DEFAULT),
@@ -405,10 +448,13 @@ def build_app() -> gr.Blocks:
                 route_btn.click(
                     fn=run_routes,
                     inputs=[origin, destination, route_time, route_model, route_horizon,
-                            route_seq, k, roads, flow_site, capacity, missing_mode],
+                            route_seq, k, roads, flow_site, capacity, missing_mode, search_method],
                     outputs=[route_status, route_table, route_json, route_map_view],
                 )
                 gr.Markdown(
+                    "**Six A2A search algorithms:** AS (A*) and CUS2 (weighted IDA*) give the "
+                    "lowest-cost paths; DFS, BFS, GBFS and CUS1 (IDDFS) find valid alternatives "
+                    "but cannot guarantee lowest travel time.\n\n"
                     "**Modelling limitations:** `steady_4x` converts one 15-minute model forecast "
                     "to an estimated hourly flow; this is *not* a true four-period forecast. "
                     "The provided flow-to-speed formula assumes at most 1,500 vehicles/hour on one road, "
@@ -465,6 +511,11 @@ def build_app() -> gr.Blocks:
                         rc_capacity = gr.Radio(label="Over-capacity policy", choices=[
                             "Reject values above 1500 veh/hour", "Clamp to 1500 (experimental)"],
                             value="Reject values above 1500 veh/hour")
+                        rc_algorithm = gr.Dropdown(
+                            label="A2A search algorithm",
+                            choices=["DFS", "BFS", "GBFS", "AS", "CUS1", "CUS2"],
+                            value=defaults.get("default_search_algorithm", "AS"),
+                            info="AS / CUS2 optimise travel time; other methods may not")
                         rc_btn = gr.Button("Compare routes", variant="primary")
                     with gr.Column(scale=2):
                         rc_status = gr.Markdown("Pick a trip and click **Compare routes**.")
@@ -472,7 +523,8 @@ def build_app() -> gr.Blocks:
                         rc_table = gr.Dataframe(headers=comparison_view.ROUTE_HEADERS, value=[], interactive=False,
                                                 datatype=["str", "number", "str", "number", "str"],
                                                 label="Top routes under each model")
-                rc_btn.click(fn=run_route_comparison, inputs=[rc_origin, rc_dest, rc_time, rc_capacity],
+                rc_btn.click(fn=run_route_comparison, inputs=[rc_origin, rc_dest, rc_time, rc_capacity,
+                                                               gr.State(5), gr.State(None), rc_algorithm],
                              outputs=[rc_status, rc_table, rc_map])
     return app
 

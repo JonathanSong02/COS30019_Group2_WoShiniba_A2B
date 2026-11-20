@@ -1,4 +1,4 @@
-# TBRGS `main.py` Integration — Group 2 (current status, 20 Nov 2026)
+# TBRGS `main.py` Integration — Group 2 (current status, 21 Nov 2026)
 
 `main.py` integrates trained **GRU, LSTM and Regression Tree** prediction functions with 40-site Boroondara SCATS routing. The saved models are historical October 2006 models; their inputs are the *last observed* 15-minute interval. The target is `as_of + horizon_minutes`. Do not infer live/2026 predictions.
 
@@ -6,12 +6,12 @@
 
 - `predict_traffic(site, as_of_time, model_name, horizon_minutes, sequence_length=8, ...)` returns one future quarter-hour vehicle count. Model name: `gru`, `lstm`, `regression_tree`.
 - `load_verified_road_links(data/processed/scats_road_edges.csv)` reads 136 directed links; no links are invented from coordinate proximity at runtime.
-- `compute_traffic_routes(origin, destination, as_of_time, links, coords, predictor, ...)` predicts required sites, converts flows to travel times, builds the shared A2A graph adapter, and returns up to five distinct ranked paths with estimated seconds/minutes.
+- `compute_traffic_routes(origin, destination, as_of_time, links, coords, predictor, ...)` predicts required sites, converts flows to travel times, builds the shared A2A graph adapter, and searches up to five distinct paths with the selected six-algorithm A2A method (`search_algorithm=AS` by default).
 - `config.json` controls defaults for model, forecast horizon, route count, intersection delay, flow-site convention and flow conversion.
 
 ```powershell
 python main.py predict --site 2000 --model gru --time 2006-10-30T20:00:00 --horizon 15
-python main.py route --model gru --origin 2000 --destination 3002 --time 2006-10-30T20:00:00 --horizon 15 --hourly-policy steady_4x
+python main.py route --model gru --origin 2000 --destination 3002 --time 2006-10-30T20:00:00 --horizon 15 --hourly-policy steady_4x --search-algorithm AS
 ```
 
 The route CLI requires `--hourly-policy steady_4x` to make its single-forecast hourly approximation explicit. Optional `--capacity-policy clamp` is EXPERIMENTAL. `--flow-conversion site_total` reproduces the old whole-site interpretation for sensitivity comparison. The default is `per_approach`.
@@ -32,6 +32,10 @@ python run_a2b_testcases.py
 python -m gui.app
 ```
 
-On 20 Nov 2026 in the review environment: **143/143** unit tests and **26/26** documented end-to-end acceptance scenarios passed. An example GRU route (2000→3002, last observed 30 Oct 2006 20:00, strict Reject, per-approach) returned 5 routes; fastest was **12.216 minutes** via `2000→4043→4273→4270→4263→3002` with no capacity clamping. These are assignment simulation outputs, not field-measured travel times.
+On 20 Nov 2026 in the review environment: **the updated unittest suite** unit tests and **26/26** documented end-to-end acceptance scenarios passed. An example GRU route (2000→3002, last observed 30 Oct 2006 20:00, strict Reject, per-approach) returned 5 routes; fastest was **12.216 minutes** via `2000→4043→4273→4270→4263→3002` with no capacity clamping. These are assignment simulation outputs, not field-measured travel times.
 
 See `README_A2B_START_HERE.md` and `docs/SUBMISSION_CHECKLIST.md` before submitting.
+
+## Choosing the search method
+
+The Route Guidance GUI and `main.py route --search-algorithm {DFS,BFS,GBFS,AS,CUS1,CUS2}` use the six A2A strategies instead of Yen/Dijkstra. `AS` (A*) and CUS2 (weighted IDA*) give true lowest-cost top-five simple paths for nonnegative travel times; the other four return method-specific alternatives and **must not be described as globally shortest by time**. Algorithm selection and nodes-expanded count appear in `assumptions`. See `docs/SIX_A2A_SEARCH_INTEGRATION.md`.

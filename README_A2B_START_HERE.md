@@ -1,6 +1,6 @@
 # COS30019 Assignment 2B — Group 2 TBRGS (current implementation)
 
-> Updated 20 November 2026 after the latest Darren commits. This is the **current** quick-start guide, replacing the original routing-only development notes. The project's GRU, LSTM, Regression Tree, Gradio GUI, 40-site road graph and prediction-driven routing are implemented. This does not mean that all assumptions are independently validated or the report is ready for submission.
+> Updated 21 November 2026 after the six-method routing integration, retaining Darren's dataset and map updates. This is the **current** quick-start guide, replacing the original routing-only development notes. The project's GRU, LSTM, Regression Tree, Gradio GUI, 40-site road graph and prediction-driven routing are implemented. This does not mean that all assumptions are independently validated or the report is ready for submission.
 
 ## Start here (PowerShell, from the project root)
 
@@ -8,6 +8,7 @@
 python -m pip install -r requirements.txt
 python -m unittest discover -s tests -v
 python run_a2b_testcases.py
+python -m evaluation.evaluate_search_methods
 python -m gui.app
 ```
 
@@ -17,7 +18,7 @@ Equivalent command-line prediction and routing demonstrations:
 
 ```powershell
 python main.py predict --site 2000 --model gru --time 2006-10-30T20:00:00 --horizon 15
-python main.py route --origin 2000 --destination 3002 --model gru --time 2006-10-30T20:00:00 --horizon 15 --hourly-policy steady_4x
+python main.py route --origin 2000 --destination 3002 --model gru --time 2006-10-30T20:00:00 --horizon 15 --hourly-policy steady_4x --search-algorithm AS
 ```
 
 ## Implemented modules
@@ -25,10 +26,10 @@ python main.py route --origin 2000 --destination 3002 --model gru --time 2006-10
 - `data_processing/` — cleaning, per-site 15-minute grid, chronological train/validation/test split and road-graph preparation.
 - `models/` and `saved_models/` — saved LSTM, GRU and Regression Tree checkpoints and prediction interfaces; 40 processed sites have 15-minute saved models for the three methods. Other horizon coverage is more limited.
 - `evaluation/`, `results/` — error metrics (MAE, RMSE, NRMSE), matched three-model comparisons, peak/off-peak and route comparison evidence.
-- `main.py`, `routing/` — converts forecast flow to road travel time and obtains up to five ranked, directed routes on the 40-site network.
+- `main.py`, `routing/` — converts forecast flow to road travel time and obtains up to five ranked, directed routes on the 40-site network using the selected A2A search strategy.
 - `gui/` — Gradio Traffic Prediction, Route Guidance and Model Comparison tabs; interactive visualisations.
-- `tests/`, `run_a2b_testcases.py`, `A2B_Test_Results.csv` — 143 unittest cases and 26 recorded A2B acceptance scenarios passed in the review environment on 20 November 2026. Results must also be verified on the team's Windows machines.
-- A2A search programs remain in the repository; the TBRGS top-k component is built on the shared A2A graph representation.
+- `tests/`, `run_a2b_testcases.py`, `A2B_Test_Results.csv` — the updated unittest suite and 26 recorded A2B acceptance scenarios passed in the review environment on 20 November 2026. Results must also be verified on the team's Windows machines.
+- Six A2A strategies (DFS, BFS, GBFS, AS/A*, CUS1/IDDFS, CUS2/weighted IDA*) now power TBRGS routing. AS is the default for globally lowest-cost top five. DFS/BFS/GBFS/CUS1 are for comparative route exploration, not globally optimal travel time. See `docs/SIX_A2A_SEARCH_INTEGRATION.md`.
 
 ## Traffic and distance assumptions
 

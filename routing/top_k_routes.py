@@ -1,117 +1,232 @@
-"""Compute up to k lowest-cost simple paths on a non-negative directed graph.
+"""A2B routing with the SIX A2A tree-search strategies (no Yen/Dijkstra).
 
-This module reuses A2A's Graph.neighbours() adjacency API. Graph weights are
-whatever units the caller supplies: for A2B, *seconds of travel time*.
-It does not predict traffic, build roads, or convert SCATS volumes.
+All strategies explore *simple* directed paths through the predicted-travel-time
+weighted SCATS graph. DFS/BFS/GBFS/CUS1 select paths according to their own
+frontier discipline, not guaranteed lowest travel time. A* (AS) and weighted
+IDA* (CUS2) use an admissible cost-distance lower bound and return the exact
+k cheapest simple paths for nonnegative edge costs.
 
-Yen's algorithm enumerates loopless alternatives, with Dijkstra as the
-shortest-path subroutine. Paths are unique by their SCATS-node sequence.
+The original A2A implementations in algorithms/ are deliberately preserved,
+including CUS2's A2A minimum-**moves** objective. Here CUS2 is the weighted
+travel-**time** generalisation needed for A2B; otherwise it would not be
+optimal for the assignment's predicted-time edge weights.
 """
+from __future__ import annotations
 
+from collections import deque
 import heapq
-import itertools
+from itertools import count
+from functools import lru_cache
 import math
 
-
-def _check_graph(graph):
-    """Validate that every edge has a finite, non-negative numeric cost."""
-    known = set(graph.coords)
-    for source, edges in graph.edges.items():
-        if source not in known:
-            raise ValueError(f"Unknown source SCATS site: {source}")
-        for destination, cost in edges:
-            if destination not in known:
-                raise ValueError(f"Unknown destination SCATS site: {destination}")
-            if not isinstance(cost, (int, float)) or not math.isfinite(cost) or cost < 0:
-                raise ValueError(f"Invalid edge weight {source}->{destination}: {cost!r}")
+METHODS = ("DFS", "BFS", "GBFS", "AS", "CUS1", "CUS2")
+# Upper bound is explicit: never silently report a partial search as complete.
+MAX_EXPANSIONS = 500_000
 
 
-def _dijkstra(graph, origin, destination, banned_nodes=frozenset(), banned_edges=frozenset()):
-    if origin in banned_nodes or destination in banned_nodes:
-        return None
-    serial = itertools.count()
-    heap = [(0.0, next(serial), origin, (origin,))]
-    best = {origin: 0.0}
-    settled = set()
-    while heap:
-        cost, _, current, path = heapq.heappop(heap)
-        if current in settled or cost > best[current]:
-            continue
-        settled.add(current)
-        if current == destination:
-            return list(path), cost
-        for neighbour, edge_cost in sorted(graph.neighbours(current)):
-            if (current, neighbour) in banned_edges or neighbour in banned_nodes:
-                continue
-            if neighbour in settled:
-                continue
-            new_cost = cost + edge_cost
-            if new_cost < best.get(neighbour, float('inf')):
-                best[neighbour] = new_cost
-                heapq.heappush(heap, (new_cost, next(serial), neighbour, path + (neighbour,)))
-    return None
-
-
-def _route_cost(graph, path):
-    total = 0.0
-    for current, neighbour in zip(path, path[1:]):
-        options = [weight for candidate, weight in graph.neighbours(current)
-                   if candidate == neighbour]
-        if not options:
-            raise ValueError(f"Missing road edge {current}->{neighbour}")
-        total += min(options)
-    return total
-
-
-def find_top_k_routes(graph, origin, destination, k=5):
-    """Return [(path_of_site_ids, total_weight), ...], sorted by increasing cost.
-
-    Up to five routes (the A2B requirement). If unreachable, return [].
-    If origin == destination, return [([origin], 0.0)]. No loops in paths.
-    For the real SCATS graph, edge weights must already be in seconds.
-    """
-    if not isinstance(k, int) or isinstance(k, bool) or not 1 <= k <= 5:
-        raise ValueError('k must be an integer from 1 to 5')
+def _validated(graph, origin, destination, k, algorithm):
+    if algorithm not in METHODS:
+        raise ValueError(f"Unknown search algorithm {algorithm!r}; choose {', '.join(METHODS)}")
+    if type(k) is not int or not 1 <= k <= 5:
+        raise ValueError("k must be an integer from 1 to 5")
     if origin not in graph.coords or destination not in graph.coords:
-        raise ValueError('Origin and destination must be valid graph/SCATS site IDs')
-    _check_graph(graph)
+        raise ValueError("Origin and destination must be valid graph/SCATS site IDs")
+    adjacency = {}
+    reverse = {s: [] for s in graph.coords}
+    for source, edges in graph.edges.items():
+        if source not in graph.coords:
+            raise ValueError(f"Unknown source SCATS site: {source}")
+        minimal = {}
+        for target, cost in edges:
+            if target not in graph.coords:
+                raise ValueError(f"Unknown destination SCATS site: {target}")
+            if isinstance(cost, bool) or not isinstance(cost, (int, float)) or not math.isfinite(cost) or cost < 0:
+                raise ValueError(f"Invalid edge weight {source}->{target}: {cost!r}")
+            minimal[target] = min(float(cost), minimal.get(target, math.inf))
+        adjacency[source] = tuple(sorted(minimal.items()))
+        for target in minimal:
+            reverse[target].append(source)
+    for source in graph.coords:
+        adjacency.setdefault(source, ())
+    # Ignore dead-end branches that provably cannot reach the selected goal.
+    can_reach = {destination}
+    queue = deque([destination])
+    while queue:
+        for predecessor in reverse[queue.popleft()]:
+            if predecessor not in can_reach:
+                can_reach.add(predecessor)
+                queue.append(predecessor)
+    return adjacency, can_reach
 
-    first = _dijkstra(graph, origin, destination)
-    if first is None:
-        return []
-    accepted = [first]
-    accepted_paths = {tuple(first[0])}
-    candidates = []
-    candidate_paths = set()
-    serial = itertools.count()
 
-    while len(accepted) < k:
-        previous_path, _ = accepted[-1]
-        for index in range(len(previous_path) - 1):
-            root = previous_path[:index + 1]
-            spur_origin = root[-1]
-            removed_edges = set()
-            for path, _ in accepted:
-                if len(path) > index + 1 and path[:index + 1] == root:
-                    removed_edges.add((path[index], path[index + 1]))
-            # Ban earlier root nodes to guarantee a loopless route.
-            spur = _dijkstra(graph, spur_origin, destination,
-                             banned_nodes=set(root[:-1]),
-                             banned_edges=removed_edges)
-            if spur is None:
-                continue
-            combined = tuple(root[:-1] + spur[0])
-            if combined in accepted_paths or combined in candidate_paths:
-                continue
-            total_cost = _route_cost(graph, combined)
-            heapq.heappush(candidates, (total_cost, next(serial), combined))
-            candidate_paths.add(combined)
+def _admissible_h(graph, adjacency, destination):
+    """Cost lower bound from the minimum edge-cost / geometric-distance ratio.
 
-        if not candidates:
+    With h(s) = alpha * Euclidean(s,goal) and every edge c >= alpha *
+    Euclidean(edge), triangle inequality gives consistency and admissibility.
+    This works even if geographic coordinates are degrees rather than km.
+    """
+    scale = math.inf
+    for source, edges in adjacency.items():
+        for target, cost in edges:
+            distance = graph.distance(source, target)
+            if distance > 0:
+                scale = min(scale, cost / distance)
+    if not math.isfinite(scale):
+        scale = 0.0
+    return lambda site: scale * graph.distance(site, destination)
+
+
+def _limit(counter):
+    if counter[0] >= MAX_EXPANSIONS:
+        raise ValueError("Search expansion limit reached; no incomplete routes are returned. "
+                         "Try A* (AS) or fewer routes for this graph.")
+    counter[0] += 1
+
+
+def _frontier_routes(adjacency, reach, origin, destination, k, method, heuristic, expanded):
+    serial = count()
+    start = ((origin,), 0.0)
+    if method == "DFS":
+        frontier = [start]
+        get = frontier.pop
+        def add(children):
+            frontier.extend(reversed(children))
+    elif method == "BFS":
+        frontier = deque([start])
+        get = frontier.popleft
+        def add(children):
+            frontier.extend(children)
+    else:
+        frontier = [(0.0 if method == "AS" else heuristic(origin), next(serial), start)]
+        def get():
+            return heapq.heappop(frontier)[2]
+        def add(children):
+            for path, cost in children:
+                priority = (cost + heuristic(path[-1])) if method == "AS" else heuristic(path[-1])
+                heapq.heappush(frontier, (priority, next(serial), (path, cost)))
+    # In a dense cyclic network DFS can spend exponential time exploring
+    # branches whose *remaining unvisited nodes* can no longer reach the goal.
+    # This feasibility pruning changes no DFS answer: impossible branches
+    # cannot contain any simple route to the destination.
+    @lru_cache(maxsize=131072)
+    def feasible(current, forbidden):
+        waiting = deque([current])
+        reached = {current}
+        while waiting:
+            for next_site, _ in adjacency[waiting.popleft()]:
+                if next_site == destination:
+                    return True
+                if next_site not in forbidden and next_site not in reached:
+                    reached.add(next_site)
+                    waiting.append(next_site)
+        return False
+
+    found = []
+    while frontier and (len(found) < k or (
+        method == "AS" and frontier[0][0] <=
+        sorted((cost for _, cost in found))[k - 1] + 1e-9
+    )):
+        path, cost = get()
+        _limit(expanded)
+        current = path[-1]
+        if current == destination:
+            found.append((list(path), cost))
+            continue
+        children = [(path + (neighbor,), cost + weight)
+                    for neighbor, weight in adjacency[current]
+                    if neighbor in reach and neighbor not in path and (
+                        method != "DFS" or neighbor == destination or
+                        feasible(neighbor, frozenset(path))
+                    )]
+        add(children)
+    # A* goal pop order is optimal-cost order; other methods are only
+    # sorted among their discovered candidates, NOT claimed globally optimal.
+    return sorted(found, key=lambda route: (route[1], len(route[0]), tuple(route[0])))[:k]
+
+
+def _iddfs_routes(adjacency, reach, origin, destination, k, expanded):
+    found = []
+    visited_paths = set()
+
+    def walk(path, cost, depth_remaining):
+        _limit(expanded)
+        if path[-1] == destination:
+            if path not in visited_paths:
+                found.append((list(path), cost))
+                visited_paths.add(path)
+            return len(found) >= k
+        if not depth_remaining:
+            return False
+        for neighbor, weight in adjacency[path[-1]]:
+            if neighbor in reach and neighbor not in path:
+                if walk(path + (neighbor,), cost + weight, depth_remaining - 1):
+                    return True
+        return False
+
+    for limit in range(len(adjacency)):
+        if walk((origin,), 0.0, limit):
             break
-        cost, _, path_tuple = heapq.heappop(candidates)
-        candidate_paths.discard(path_tuple)
-        accepted_paths.add(path_tuple)
-        accepted.append((list(path_tuple), cost))
+    return sorted(found, key=lambda route: (route[1], len(route[0]), tuple(route[0])))[:k]
 
-    return accepted
+
+def _ida_star_routes(adjacency, reach, origin, destination, k, heuristic, expanded):
+    """Weighted IDA*; keep increasing admissible f thresholds until top-k proven."""
+    threshold = heuristic(origin)
+    found = {}
+    # Continue whole threshold pass: IDA* DFS discovers goals in depth order,
+    # not cost order, even though f is used as a cutoff.
+    while True:
+        next_threshold = math.inf
+
+        def walk(path, cost):
+            nonlocal next_threshold
+            _limit(expanded)
+            f = cost + heuristic(path[-1])
+            if f > threshold + 1e-9:
+                next_threshold = min(next_threshold, f)
+                return
+            if path[-1] == destination:
+                found[path] = cost
+                return
+            for neighbor, weight in adjacency[path[-1]]:
+                if neighbor in reach and neighbor not in path:
+                    walk(path + (neighbor,), cost + weight)
+
+        walk((origin,), 0.0)
+        ranked = sorted(found.items(), key=lambda item: (item[1], len(item[0]), item[0]))
+        if len(ranked) >= k and ranked[k - 1][1] <= threshold + 1e-9:
+            return [(list(path), cost) for path, cost in ranked[:k]]
+        if math.isinf(next_threshold):
+            return [(list(path), cost) for path, cost in ranked[:k]]
+        # Floating-point threshold changes must move forward.
+        threshold = max(math.nextafter(threshold, math.inf), next_threshold)
+
+
+def search_routes(graph, origin, destination, k=5, algorithm="AS"):
+    """Return (routes, statistics), where routes are (site-path, time-seconds).
+
+    AS and CUS2: cost-optimal top-k. DFS/BFS/GBFS/CUS1: up to k unique
+    strategy-discovered routes, ranked by their reported travel time.
+    """
+    algorithm = str(algorithm).upper()
+    adjacency, can_reach = _validated(graph, origin, destination, k, algorithm)
+    optimal = algorithm in {"AS", "CUS2"}
+    if origin == destination:
+        return [([origin], 0.0)], {"algorithm": algorithm, "expanded": 1, "cost_optimal": optimal}
+    if origin not in can_reach:
+        return [], {"algorithm": algorithm, "expanded": 0, "cost_optimal": optimal}
+    expanded = [0]
+    h = _admissible_h(graph, adjacency, destination)
+    if algorithm in {"DFS", "BFS", "GBFS", "AS"}:
+        routes = _frontier_routes(adjacency, can_reach, origin, destination, k, algorithm, h, expanded)
+    elif algorithm == "CUS1":
+        routes = _iddfs_routes(adjacency, can_reach, origin, destination, k, expanded)
+    else:
+        routes = _ida_star_routes(adjacency, can_reach, origin, destination, k, h, expanded)
+    return routes, {"algorithm": algorithm, "expanded": expanded[0], "cost_optimal": optimal}
+
+
+def find_top_k_routes(graph, origin, destination, k=5, algorithm="AS"):
+    """Legacy call interface retained for tests/integration; default is A*."""
+    return search_routes(graph, origin, destination, k, algorithm)[0]

@@ -6,5 +6,6 @@
   "controlled_intersection_delay_seconds": 30,
   "volume_used_for_edge": "origin",
   "flow_conversion": "per_approach",
-  "notes": "volume_used_for_edge = origin: the flow on an edge comes from its starting SCATS site, as the lecturer's flow-to-travel-time conversion PDF specifies; used for every edge. flow_conversion = per_approach: the hourly site total (4 x one 15-min forecast) is divided by the site's n_core_approaches in scats_sites.csv, because SCATS volumes are totals over all approaches while the 1500 veh/hour formula describes one road; site_total keeps the old behaviour for comparison. Over-capacity flows are rejected by default (the brief assumes roads are under capacity); clamp is experimental. These defaults do not imply models have been trained."
+  "notes": "volume_used_for_edge = origin: the flow on an edge comes from its starting SCATS site, as the lecturer's flow-to-travel-time conversion PDF specifies; used for every edge. flow_conversion = per_approach: the hourly site total (4 x one 15-min forecast) is divided by the site's n_core_approaches in scats_sites.csv, because SCATS volumes are totals over all approaches while the 1500 veh/hour formula describes one road; site_total keeps the old behaviour for comparison. Over-capacity flows are rejected by default (the brief assumes roads are under capacity); clamp is experimental. These defaults do not imply models have been trained.",
+  "default_search_algorithm": "AS"
 }
