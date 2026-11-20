@@ -1,3 +1,5 @@
+> **Historical development note.** This file documents an earlier milestone and contains now-obsolete coverage numbers, test counts and installation instructions. For the latest integrated system use `README_A2B_START_HERE.md` (20 Nov 2026).
+
 # COS30019 Assignment 2B — GRU update (Jonathan)
 
 ## What was changed

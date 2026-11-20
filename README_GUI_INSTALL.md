@@ -1,3 +1,5 @@
+> **Historical development note.** This file documents an earlier milestone and contains now-obsolete coverage numbers, test counts and installation instructions. For the latest integrated system use `README_A2B_START_HERE.md` (20 Nov 2026).
+
 # Group 2 · TBRGS Gradio GUI patch
 
 This patch adds `gui/app.py`, `gui/__init__.py`, and `tests/test_gui_backend.py` to your existing A2B project. It does not change `main.py`, A2A algorithms, Darren's preprocessing, Anson's LSTM, or existing model checkpoints.

@@ -1,54 +1,37 @@
-# Jonathan's `main.py` – COS30019 Assignment 2B
+# TBRGS `main.py` Integration — Group 2 (current status, 20 Nov 2026)
 
-This is a **new entry point**, added without rewriting Darren's preprocessing or Anson's LSTM. The original A2A files remain unchanged.
+`main.py` integrates trained **GRU, LSTM and Regression Tree** prediction functions with 40-site Boroondara SCATS routing. The saved models are historical October 2006 models; their inputs are the *last observed* 15-minute interval. The target is `as_of + horizon_minutes`. Do not infer live/2026 predictions.
 
-## 1. What is working today
+## API and CLI
 
-The latest uploaded project includes trained GRU models for **SCATS site 2000**, with horizons 15, 30, and 60 minutes and lookback 8. You can now call them through `main.py`:
-
-```powershell
-python main.py predict --model gru --site 2000 --time 2006-10-20T10:00:00 --horizon 30
-```
-
-`--time` means the **last observed** quarter-hour; the predicted target time is `--time + horizon`. Output is the number of vehicles in **one** 15-minute period. It is **not** an hourly total.
-
-The shared prediction wrapper can also call `models.lstm_model.predict_lstm()` when matching trained LSTM files are available. Darren's Regression Tree is **not yet wired up** and will raise an explicit error instead of silently swapping models.
-
-## 2. Real routing is awaiting Darren's verified road links
-
-The current `data/processed/scats_sites.csv` contains site coordinates but **does not prove which roads are connected**. Ask Darren to provide `data/processed/scats_road_links.csv` with actual directed roads and distances in kilometres:
-
-```csv
-from_site,to_site,distance_km
-```
-
-**Do not fill this file by connecting nearest locations.** An edge in one direction does not automatically imply an edge in the other direction.
-
-After adding the real graph and training model checkpoints for **all sites required by the graph**, run:
+- `predict_traffic(site, as_of_time, model_name, horizon_minutes, sequence_length=8, ...)` returns one future quarter-hour vehicle count. Model name: `gru`, `lstm`, `regression_tree`.
+- `load_verified_road_links(data/processed/scats_road_edges.csv)` reads 136 directed links; no links are invented from coordinate proximity at runtime.
+- `compute_traffic_routes(origin, destination, as_of_time, links, coords, predictor, ...)` predicts required sites, converts flows to travel times, builds the shared A2A graph adapter, and returns up to five distinct ranked paths with estimated seconds/minutes.
+- `config.json` controls defaults for model, forecast horizon, route count, intersection delay, flow-site convention and flow conversion.
 
 ```powershell
-python main.py route --model gru --origin 2000 --destination 3002 --time 2006-10-20T10:00:00 --horizon 15 --roads data/processed/scats_road_links.csv --hourly-policy steady_4x
+python main.py predict --site 2000 --model gru --time 2006-10-30T20:00:00 --horizon 15
+python main.py route --model gru --origin 2000 --destination 3002 --time 2006-10-30T20:00:00 --horizon 15 --hourly-policy steady_4x
 ```
 
-This will **fail clearly** if a site lacks a trained model, or if a predicted hourly volume exceeds the conversion formula's stated 1,500 vehicles/hour assumption. That is intentional. Do not use fake fallback predictions.
+The route CLI requires `--hourly-policy steady_4x` to make its single-forecast hourly approximation explicit. Optional `--capacity-policy clamp` is EXPERIMENTAL. `--flow-conversion site_total` reproduces the old whole-site interpretation for sensitivity comparison. The default is `per_approach`.
 
-## 3. Two modelling constraints to clarify
+## Formula and limitations
 
-- **Hourly aggregation:** The current models predict a single 15-minute count. `--hourly-policy steady_4x` *approximates* the hourly count as four times that predicted count; it does **not** forecast all four quarter-hours. Document this limitation. For the actual system, prefer a true four-period forecast/aggregation after agreeing with the team.
-- **Over-capacity flow:** The lecturer's quadratic assumes at most 1,500 vehicles/hour. By default, values above this raise an error. `--capacity-policy clamp` is an explicit *sensitivity/demo approximation* that caps flow at 1,500; it should **not** be silently used as the scientifically correct result. Discuss the real dataset's high flow with Dr. Joel.
-- **Origin/destination convention:** The flow conversion PDF says use traffic at the **starting** site; the main A2B assignment brief says **destination**. The CLI defaults to `origin`; use `--flow-site destination` only if confirmed.
+- Predicted hourly **site total** = 4 × predicted vehicles/15 min (steady-flow approximation).
+- Predicted hourly **approach average** = site total / `n_core_approaches`. This per-approach average is used in the lecturer's `flow = -1.4648375 × speed² + 93.75 × speed` curve, with speed capped at 60 km/h and traffic normally assumed below 1,500 vehicles/hour.
+- Travel time for a link = distance/speed + a 30-second controlled-intersection delay. Distances and road topology are map-reviewed research approximations, not independently verified road geometry.
+- Default edge flow comes from the **origin** site, matching the dedicated conversion PDF. The A2B brief uses the destination site; document the choice and the team's tutor consultation.
+- Unknown sites, unsupported timestamps, missing model checkpoints and over-capacity forecasts are reported as errors, not silently replaced with invented traffic values.
 
-## 4. Tests
+## Evidence and testing
 
 ```powershell
 python -m unittest discover -s tests -v
+python run_a2b_testcases.py
+python -m gui.app
 ```
 
-The `tests/test_main_integration.py` tests use synthetic tiny networks **only** to validate software contracts: no SCATS road links are invented. Your GRU checkpoints are real site-2000 trained weights.
+On 20 Nov 2026 in the review environment: **143/143** unit tests and **26/26** documented end-to-end acceptance scenarios passed. An example GRU route (2000→3002, last observed 30 Oct 2006 20:00, strict Reject, per-approach) returned 5 routes; fastest was **12.216 minutes** via `2000→4043→4273→4270→4263→3002` with no capacity clamping. These are assignment simulation outputs, not field-measured travel times.
 
-## 5. Next step after backend works
-
-1. Darren provides verified road links, approved flow convention, Regression Tree.
-2. Each model supports all sites/horizons needed for the chosen network.
-3. Add a GUI that calls `predict_traffic()` / `compute_traffic_routes()` and displays explicit errors for unsupported inputs.
-4. Document the real 15 test cases and report measured route results separately from synthetic unit tests.
+See `README_A2B_START_HERE.md` and `docs/SUBMISSION_CHECKLIST.md` before submitting.

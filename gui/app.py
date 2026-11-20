@@ -372,7 +372,8 @@ def build_app() -> gr.Blocks:
                                              value=start_site, allow_custom_value=True)
                         destination = gr.Dropdown(label="Destination SCATS site", choices=sites,
                                                   value=dest_site, allow_custom_value=True)
-                        route_time = gr.Textbox(label="Last observed date/time", value="2006-10-20T10:00:00")
+                        route_time = gr.Textbox(label="Last observed date/time", value=DEFAULT_COMPARISON_TIME,
+                                                info="Held-out test example; predicts the following 15-minute interval")
                         route_model = gr.Dropdown(label="Prediction model", choices=list(VALID_MODELS), value="GRU")
                         route_horizon = gr.Dropdown(label="Prediction horizon (min)", choices=[15, 30, 60], value=15)
                         route_seq = gr.Number(label="Historical lookback", value=8, precision=0, minimum=1, maximum=96)
