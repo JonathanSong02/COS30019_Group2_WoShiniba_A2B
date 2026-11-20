@@ -26,14 +26,15 @@ from gui.app import run_route_comparison
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "results" / "model_comparison" / "routes"
 # The brief's example trip plus two cross-network trips; an evening and an
-# early-morning time in the test split (fewest sites over 1,500 veh/h).
+# early-morning time in the test split. Routing uses per-approach flow, so
+# Reject (the default) works at both; the experimental Clamp is optional.
 DEFAULT_TRIPS = [(2000, 3002), (970, 4821), (2827, 4273)]
 DEFAULT_TIMES = ["2006-10-30T20:00:00", "2006-10-31T06:00:00"]
 
 
-def run(trips=DEFAULT_TRIPS, times=DEFAULT_TIMES, policy: str = "clamp", output: Path = OUTPUT) -> list[list]:
+def run(trips=DEFAULT_TRIPS, times=DEFAULT_TIMES, policy: str = "reject", output: Path = OUTPUT) -> list[list]:
     output.mkdir(parents=True, exist_ok=True)
-    label = "Clamp to 1500 (research sensitivity only)" if policy == "clamp" else "Reject values above 1500 veh/hour"
+    label = "Clamp to 1500 (experimental)" if policy == "clamp" else "Reject values above 1500 veh/hour"
     all_rows, best_rows = [], []
     for origin, dest in trips:
         for t in times:
@@ -70,6 +71,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--trip", nargs=2, type=int, action="append", metavar=("ORIGIN", "DEST"))
     ap.add_argument("--time", action="append", help="last observed time, e.g. 2006-10-30T20:00:00")
-    ap.add_argument("--policy", choices=["clamp", "reject"], default="clamp")
+    ap.add_argument("--policy", choices=["clamp", "reject"], default="reject")
     a = ap.parse_args()
     run([tuple(t) for t in a.trip] if a.trip else DEFAULT_TRIPS, a.time or DEFAULT_TIMES, a.policy)

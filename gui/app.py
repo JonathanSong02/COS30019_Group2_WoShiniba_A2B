@@ -27,11 +27,11 @@ VALID_MODELS = {"GRU": "gru", "LSTM": "lstm", "Regression Tree": "regression_tre
 # at five sites), and it is the morning peak, so the chart has a clear shape.
 DEFAULT_PREDICTION_TIME = "2006-10-30T08:00:00"
 PREDICTION_HEADERS = prediction_view.TABLE_HEADERS
-# Route comparison default: Mon 30 Oct 2006 20:00 (test split) with Clamp.
-# SCATS site volumes are totals over all approaches, so from 07:00 to 18:00
-# 26-37 of the 40 sites exceed 1,500 veh/h: "Reject" then gives no routes and
-# "Clamp" caps most sites to the same value, hiding the models' differences.
-# At 20:00 only 9 sites are over, so the forecasts actually shape the routes.
+# Route comparison default: Mon 30 Oct 2006 20:00 (test split) with Reject.
+# Routing uses per-approach flow (site total / approach count), which is under
+# 1,500 veh/h in 99.9% of observed intervals. The exceptions are the morning
+# and evening peaks at single-approach sites, mainly 2825 (Burke Rd S of the
+# Eastern Fwy, over 1,500 at 08:00-08:30 on most weekdays), where Reject stops.
 DEFAULT_COMPARISON_TIME = "2006-10-30T20:00:00"
 
 
@@ -211,7 +211,7 @@ def run_route_comparison(origin, destination, as_of_time, capacity_policy, route
     if notes:
         status += "\n\n⚠️ Not available: " + "; ".join(notes)
     if policy == "clamp":
-        status += "\n\nClamp is on: sites forecast above 1,500 veh/h are capped, which hides differences between models there."
+        status += "\n\nExperimental Clamp is on: sites forecast above 1,500 veh/h per approach are capped, which hides differences between models there."
     map_html = route_map_html(road_file, comparison_view.best_routes_for_map(by_model),
                               origin=start, destination=end,
                               model_label=f"Best route per model · {when:%a %d %b %H:%M}")
@@ -258,7 +258,7 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
              route["travel_time_minutes"], route["travel_time_seconds"]]
             for route in result["routes"]
         ]
-        note = ("⚠️ **Sensitivity scenario:** Flow above capacity was clamped. "
+        note = ("⚠️ **Experimental Clamp:** per-approach flow above 1,500 veh/h was capped. "
                 "Do not report those values as measured traffic. " if result["assumptions"]["capacity_clamped_sites"] else "")
         partial = result["assumptions"]["network_incomplete"]
         if partial:
@@ -270,7 +270,8 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
         else:
             prefix = "✅ "
         status = (prefix + f"**Computed {len(rows)} candidate route(s)** using {model} forecasts. "
-                  "Hour flow assumes four identical future 15-minute counts (4× approximation). " + note)
+                  "Hour flow assumes four identical future 15-minute counts (4× approximation), "
+                  "divided by each site's number of approaches (flow on one road). " + note)
         if not rows:
             status = "⚠️ **No route found** between these verified SCATS intersections. " + status
         # Backend uses integer SCATS IDs as dictionary keys, which is valid
@@ -292,6 +293,9 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
             site_flows_15min=site_flows,
             unavailable_sites=result["assumptions"]["unavailable_sites"].keys(),
             clamped_sites=result["assumptions"]["capacity_clamped_sites"],
+            site_flows_per_approach={r["site"]: r["flow_used_veh_per_hour"]
+                                     for r in result["assumptions"]["site_flows"]
+                                     if r["approaches"] is not None},
             origin=start, destination=end,
             model_label=f"{model} · +{horizon} min after {when:%a %d %b %Y %H:%M}",
         )
@@ -375,11 +379,11 @@ def build_app() -> gr.Blocks:
                         k = gr.Slider(label="Maximum routes", minimum=1, maximum=5, step=1, value=defaults.get("top_k_routes", 5))
                         roads = gr.Textbox(label="SCATS directed road CSV path (map-reviewed)", value=str(ROADS_DEFAULT),
                                            info="CSV columns: from_site,to_site,distance_km")
-                        flow_site = gr.Radio(label="SCATS flow convention (confirm with tutor)",
+                        flow_site = gr.Radio(label="Edge flow taken from (origin = conversion PDF)",
                                              choices=["origin", "destination"], value=defaults.get("volume_used_for_edge", "origin"))
                         capacity = gr.Radio(label="Over-capacity policy", choices=[
                             "Reject values above 1500 veh/hour",
-                            "Clamp to 1500 (research sensitivity only)"],
+                            "Clamp to 1500 (experimental)"],
                             value="Reject values above 1500 veh/hour")
                         missing_mode = gr.Radio(
                             label="Missing model forecasts",
@@ -406,7 +410,9 @@ def build_app() -> gr.Blocks:
                 gr.Markdown(
                     "**Modelling limitations:** `steady_4x` converts one 15-minute model forecast "
                     "to an estimated hourly flow; this is *not* a true four-period forecast. "
-                    "The provided flow-to-speed formula assumes at most 1,500 vehicles/hour. "
+                    "The provided flow-to-speed formula assumes at most 1,500 vehicles/hour on one road, "
+                    "so each SCATS site total is divided by its number of approaches first "
+                    "(this assumes traffic splits evenly across the approaches). "
                     "Map-reviewed road links still have estimated distances and some medium-confidence "
                     "connections; partial-network results are for integration tests only.\n\n"
                     "**Map:** SCATS coordinates are shifted by one measured offset (≈168 m north, "
@@ -454,10 +460,10 @@ def build_app() -> gr.Blocks:
                         rc_dest = gr.Dropdown(label="Destination SCATS site", choices=sites, value=dest_site,
                                               allow_custom_value=True)
                         rc_time = gr.Textbox(label="Last observed date/time", value=DEFAULT_COMPARISON_TIME,
-                                             info="Default 20:00: from 07:00 to 18:00 most site totals exceed 1,500 veh/h")
+                                             info="Default Mon 30 Oct 20:00. At 08:00-08:30 site 2825 exceeds 1,500 veh/h per approach, so Reject stops")
                         rc_capacity = gr.Radio(label="Over-capacity policy", choices=[
-                            "Reject values above 1500 veh/hour", "Clamp to 1500 (research sensitivity only)"],
-                            value="Clamp to 1500 (research sensitivity only)")
+                            "Reject values above 1500 veh/hour", "Clamp to 1500 (experimental)"],
+                            value="Reject values above 1500 veh/hour")
                         rc_btn = gr.Button("Compare routes", variant="primary")
                     with gr.Column(scale=2):
                         rc_status = gr.Markdown("Pick a trip and click **Compare routes**.")

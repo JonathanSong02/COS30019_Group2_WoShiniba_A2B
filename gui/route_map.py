@@ -99,6 +99,7 @@ def build_map_payload(
     site_names: Mapping[int, str] | None = None,
     unavailable_sites: Iterable[int] = (),
     clamped_sites: Iterable[int] = (),
+    site_flows_per_approach: Mapping[int, float] | None = None,
     origin: int | None = None,
     destination: int | None = None,
     offset: Mapping[str, float] | None = None,
@@ -111,6 +112,7 @@ def build_map_payload(
     names = {int(k): v for k, v in (site_names or {}).items()}
     unavailable = {int(s) for s in unavailable_sites}
     clamped = {int(s) for s in clamped_sites}
+    per_approach = {int(k): float(v) for k, v in (site_flows_per_approach or {}).items()}
 
     sites = []
     for site, (lat, lon) in sorted(coords.items()):
@@ -119,6 +121,7 @@ def build_map_payload(
             "name": names.get(site, ""),
             "flow15": round(flows[site], 1) if site in flows else None,
             "flowHour": round(flows[site] * 4, 0) if site in flows else None,
+            "flowApproach": round(per_approach[site], 0) if site in per_approach else None,
             "unavailable": site in unavailable,
             "clamped": site in clamped,
             "role": ("origin" if site == origin else
@@ -204,7 +207,8 @@ D.sites.forEach(s => {
   if (s.role === "destination") { fill = "#000000"; radius = 9; }
   let tip = `<b>SCATS ${s.id}</b>` + (s.name ? `<br>${s.name}` : "");
   if (s.flow15 !== null) tip += `<br>Predicted: ${s.flow15} veh / 15 min (≈${s.flowHour} veh/h)`;
-  if (s.clamped) tip += `<br><i>Clamped to 1,500 veh/h</i>`;
+  if (s.flowApproach !== null && s.flowApproach !== undefined) tip += `<br>Used for travel time: ≈${s.flowApproach} veh/h per approach`;
+  if (s.clamped) tip += `<br><i>Clamped to 1,500 veh/h (experimental)</i>`;
   if (s.unavailable) tip += `<br><i>No forecast available (excluded)</i>`;
   if (s.role) tip += `<br><b>${s.role === "origin" ? "Origin" : "Destination"}</b>`;
   L.circleMarker([s.lat, s.lon], {radius, color: stroke, weight: 2, fillColor: fill, fillOpacity: 1})

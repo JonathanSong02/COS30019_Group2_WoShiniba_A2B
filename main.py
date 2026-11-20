@@ -4,9 +4,13 @@ The prediction command works with existing GRU checkpoints now. The route
 command REQUIRES Darren's verified directed road links. It never creates roads
 from geographic proximity and never substitutes synthetic traffic silently.
 
-Traffic input to the travel-time model must be VEHICLES PER HOUR. A single
-15-minute GRU forecast is NOT an hourly forecast; the optional steady-hour
-assumption (4x) is an explicitly disclosed approximation for prototyping.
+Traffic input to the travel-time model must be VEHICLES PER HOUR on ONE road.
+A single 15-minute forecast is NOT an hourly forecast; the steady-hour
+assumption (4x) is an explicitly disclosed approximation. SCATS site volumes
+are totals over all of a site's approaches (usually 4 roads), so by default the
+hourly site total is divided by the site's approach count (per_approach) before
+the 1,500 veh/hour flow-to-speed formula is applied. Model outputs are never
+changed; only the value fed to the travel-time formula is converted.
 """
 from __future__ import annotations
 
@@ -31,6 +35,7 @@ DEFAULT_CSV = ROOT / "data" / "processed" / "scats_15min.csv"
 DEFAULT_SITES = ROOT / "data" / "processed" / "scats_sites.csv"
 DEFAULT_ROADS = ROOT / "data" / "processed" / "scats_road_edges.csv"  # Darren's map-reviewed graph
 DEFAULT_MODELS = ROOT / "saved_models"
+FLOW_CONVERSIONS = ("per_approach", "site_total")
 
 
 def load_config(path: str | Path = ROOT / "config.json") -> dict:
@@ -41,6 +46,8 @@ def load_config(path: str | Path = ROOT / "config.json") -> dict:
         raise ValueError("config.json default_model must be GRU, LSTM or Regression_Tree")
     if config.get("volume_used_for_edge", "origin") not in {"origin", "destination"}:
         raise ValueError("config.json volume_used_for_edge must be origin or destination")
+    if config.get("flow_conversion", "per_approach") not in FLOW_CONVERSIONS:
+        raise ValueError("config.json flow_conversion must be per_approach or site_total")
     return config
 
 
@@ -125,6 +132,35 @@ def load_site_coordinates(csv_path: str | Path) -> dict[int, tuple[float, float]
     return coords
 
 
+def load_site_approach_counts(csv_path: str | Path = DEFAULT_SITES) -> dict[int, int]:
+    """Read each site's number of core approaches (n_core_approaches).
+
+    This is the number of approach detectors whose 15-minute counts were summed
+    into the site's traffic_volume_15min during preprocessing (sites 3685 and
+    4264 use their reduced counts after the broken detectors were dropped), so
+    dividing by it gives the average volume on one approach road.
+    """
+    counts: dict[int, int] = {}
+    with Path(csv_path).open(newline="", encoding="utf-8-sig") as handle:
+        reader = csv.DictReader(handle)
+        if not {"scats_site", "n_core_approaches"}.issubset(reader.fieldnames or []):
+            raise ValueError("Site CSV needs scats_site,n_core_approaches for per-approach flow")
+        for row in reader:
+            site = int(row["scats_site"])
+            try:
+                n = int(row["n_core_approaches"])
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"Invalid approach count for site {site}") from exc
+            if n < 1:
+                raise ValueError(f"Site {site} must have at least one approach")
+            if site in counts:
+                raise ValueError(f"Duplicate site metadata: {site}")
+            counts[site] = n
+    if not counts:
+        raise ValueError("Site metadata is empty")
+    return counts
+
+
 def load_verified_road_links(csv_path: str | Path) -> list[tuple[int, int, float]]:
     """Read manually/externally verified *directed* connections and distances.
 
@@ -170,13 +206,26 @@ def compute_traffic_routes(
     capacity_policy: str = "reject",
     intersection_delay_seconds: float = 30.0,
     missing_site_policy: str = "reject",
+    flow_conversion: str = "per_approach",
+    approach_counts: dict[int, int] | None = None,
 ) -> dict:
     """Convert per-site predicted 15-min counts to route costs, then rank routes.
 
     The steady_4x policy assumes all four future 15-min counts equal the one
     predicted interval. This is NOT a genuine hourly forecast. It is explicit.
-    'reject' is the default when >1500 veh/hour; optional clamp is for a
-    clearly labelled sensitivity/demo scenario only, never an observed value.
+
+    flow_conversion:
+      'per_approach' (default): hourly site total / the site's approach count,
+          i.e. the average flow on one approach road, which is what the
+          1,500 veh/hour flow-to-speed formula describes.
+      'site_total': the hourly site total as-is (previous behaviour, kept for
+          before/after comparison; exceeds 1,500 veh/hour most of the day).
+    approach_counts: {site: n_core_approaches}; read from scats_sites.csv when
+          omitted. A site with no count is an error, never a guess.
+
+    capacity_policy applies to the converted flow: 'reject' (default, as the
+    brief assumes every road is under capacity) raises above 1,500 veh/hour;
+    'clamp' is an EXPERIMENTAL option that caps the flow at 1,500 veh/hour.
     """
     as_of = valid_as_of(as_of_time)
     if hourly_policy != "steady_4x":
@@ -187,6 +236,10 @@ def compute_traffic_routes(
         raise ValueError("missing_site_policy must be reject or exclude")
     if flow_site not in {"origin", "destination"}:
         raise ValueError("flow_site must be origin or destination")
+    if flow_conversion not in FLOW_CONVERSIONS:
+        raise ValueError("flow_conversion must be per_approach or site_total")
+    if flow_conversion == "per_approach" and approach_counts is None:
+        approach_counts = load_site_approach_counts(DEFAULT_SITES)
     if origin not in site_coords or destination not in site_coords:
         raise ValueError("Origin/destination must be known SCATS site IDs")
     if not 1 <= k <= 5:
@@ -205,6 +258,7 @@ def compute_traffic_routes(
                       sorted({u if flow_site == "origin" else v
                               for u, v, _ in verified_road_links}))
     hourly = {}
+    site_flows = []      # per-site record of each conversion step, for reporting
     clamped_sites = []
     excluded_sites = {}
     for site in required_sites:
@@ -225,19 +279,38 @@ def compute_traffic_routes(
             continue
         if not math.isfinite(volume_15min) or volume_15min < 0:
             raise ValueError(f"Invalid 15-minute prediction for site {site}")
-        hourly_estimate = volume_15min * 4
+        site_total_hourly = volume_15min * 4          # steady_4x
+        if flow_conversion == "per_approach":
+            if site not in approach_counts:
+                raise KeyError(f"No approach count for SCATS site {site} in the site metadata")
+            n_approaches = approach_counts[site]
+            hourly_estimate = site_total_hourly / n_approaches
+            flow_label = "per-approach"
+        else:
+            n_approaches = None
+            hourly_estimate = site_total_hourly
+            flow_label = "site-total"
+        record = {"site": site,
+                  "predicted_vehicles_per_15min": round(volume_15min, 4),
+                  "site_total_veh_per_hour": round(site_total_hourly, 2),
+                  "approaches": n_approaches,
+                  "flow_used_veh_per_hour": round(hourly_estimate, 2),
+                  "clamped": False}
         if hourly_estimate > CAPACITY_VEH_PER_HOUR:
             if capacity_policy == "reject":
                 raise ValueError(
-                    f"SCATS {site} predicted {hourly_estimate:.1f} vehicles/hour "
+                    f"SCATS {site} predicted {hourly_estimate:.1f} {flow_label} vehicles/hour "
                     f"under steady_4x, exceeding the lecturer's "
                     f"{CAPACITY_VEH_PER_HOUR:.0f} veh/hour assumption. "
-                    "Ask tutor for a documented policy; optional "
-                    "--capacity-policy clamp is an explicit approximation."
+                    "The brief assumes every road is under capacity; the "
+                    "experimental --capacity-policy clamp caps it instead."
                 )
             clamped_sites.append(site)
             hourly_estimate = CAPACITY_VEH_PER_HOUR
+            record["flow_used_veh_per_hour"] = CAPACITY_VEH_PER_HOUR
+            record["clamped"] = True
         hourly[site] = hourly_estimate
+        site_flows.append(record)
     usable_links = ([ (u, v, d) for u, v, d in verified_road_links
                        if u not in excluded_sites and v not in excluded_sites]
                     if missing_site_policy == "exclude" else verified_road_links)
@@ -264,8 +337,18 @@ def compute_traffic_routes(
         "assumptions": {
             "flow_site": flow_site,
             "hourly_conversion": "4 x one predicted 15-minute count (steady-flow assumption)",
+            "flow_conversion": flow_conversion,
+            "flow_conversion_detail": (
+                "hourly site total / site's n_core_approaches (scats_sites.csv): average "
+                "flow on one approach road; model predictions unchanged"
+                if flow_conversion == "per_approach" else
+                "hourly site total over all approaches, used as-is"),
             "capacity_policy": capacity_policy,
+            "capacity_policy_note": ("EXPERIMENTAL: flows above 1500 veh/hour capped at 1500"
+                                     if capacity_policy == "clamp" else
+                                     "flows above 1500 veh/hour are rejected (brief's under-capacity assumption)"),
             "capacity_clamped_sites": clamped_sites,
+            "site_flows": site_flows,
             "intersection_delay_seconds": intersection_delay_seconds,
             "road_links": "Caller-supplied map-reviewed directed edges; no roads inferred at runtime",
             "road_distances": "Estimated straight-line or L-shaped distances, not measured road distance",
@@ -307,7 +390,11 @@ def main(argv=None) -> int:
     p_route.add_argument("--top-k", type=int, default=defaults.get("top_k_routes", 5))
     p_route.add_argument("--flow-site", choices=["origin", "destination"], default=defaults.get("volume_used_for_edge", "origin"))
     p_route.add_argument("--hourly-policy", choices=["steady_4x"], required=True)
-    p_route.add_argument("--capacity-policy", choices=["reject", "clamp"], default="reject")
+    p_route.add_argument("--flow-conversion", choices=list(FLOW_CONVERSIONS),
+                         default=defaults.get("flow_conversion", "per_approach"),
+                         help="per_approach (default): site total / approach count; site_total: old behaviour")
+    p_route.add_argument("--capacity-policy", choices=["reject", "clamp"], default="reject",
+                         help="reject (default) above 1500 veh/hour; clamp is experimental")
     p_route.add_argument("--missing-site-policy", choices=["reject", "exclude"], default="reject",
                          help="Exclude unavailable model sites for explicitly partial-network development tests")
     p_route.add_argument("--intersection-delay", type=float, default=defaults.get("controlled_intersection_delay_seconds", 30.0))
@@ -337,6 +424,7 @@ def main(argv=None) -> int:
                 capacity_policy=args.capacity_policy,
                 intersection_delay_seconds=args.intersection_delay,
                 missing_site_policy=args.missing_site_policy,
+                flow_conversion=args.flow_conversion,
             )
             result["model"] = args.model.upper()
             result["horizon_minutes"] = args.horizon

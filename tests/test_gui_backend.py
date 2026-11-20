@@ -53,7 +53,7 @@ class GUIBackendTests(unittest.TestCase):
             status, routes, details, map_html = run_routes(
                 "2000", "3002", "2006-10-20T10:00:00", "GRU", 15,
                 8, 5, str(DEFAULT_ROADS), "origin",
-                "Clamp to 1500 (research sensitivity only)", "exclude",
+                "Clamp to 1500 (experimental)", "exclude",
             )
         self.assertIn("PARTIAL-NETWORK", status)
         self.assertEqual(len(routes), 5)

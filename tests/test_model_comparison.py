@@ -128,7 +128,7 @@ class RouteComparisonTests(unittest.TestCase):
 
     def test_gui_callback_real_regression_tree_routes(self):
         status, rows, map_html = run_route_comparison("2000", "3002", "2006-10-30T20:00:00",
-                                                      "Clamp to 1500 (research sensitivity only)")
+                                                      "Clamp to 1500 (experimental)")
         self.assertIn("Best route under each model", status)
         self.assertIn("Regression Tree", {r[0] for r in rows})
         self.assertIn("Regression Tree best route", html.unescape(map_html))

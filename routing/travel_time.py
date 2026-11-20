@@ -3,10 +3,13 @@
 Primary source: lecturer's 'Traffic Flow to Travel Time Conversion v1.0.pdf'.
 It specifies a quadratic under-capacity branch, speed capped at 60 km/h,
 traffic flow from the *starting* SCATS site, and distance / speed + delay.
-The A2B main brief instead mentions volume at the destination (B), so the
-site convention must be confirmed with the tutor. This module makes it explicit.
+The A2B main brief instead mentions volume at the destination (B). The tutor
+confirmed either is acceptable if used consistently and justified; the group
+uses the origin site (the conversion PDF's rule) for every edge.
 
-Do not feed raw 15-minute traffic counts into vehicle/hour inputs.
+Do not feed raw 15-minute traffic counts into vehicle/hour inputs. The hourly
+flow passed in should be the flow on ONE road: main.compute_traffic_routes
+divides each SCATS site total by the site's approach count (per_approach).
 """
 
 import math
@@ -29,9 +32,11 @@ def _nonnegative_number(name, value):
 def speed_from_hourly_flow(hourly_volume):
     """Under-capacity (green) root of the PDF quadratic; km/hour.
 
+    hourly_volume is the flow on one road (per approach), in vehicles/hour.
     Reject flows greater than the stipulated 1500 veh/hour capacity rather
     than silently assign made-up over-capacity speeds. The assignment asks
-    us to assume every road is under capacity.
+    us to assume every road is under capacity (the experimental Clamp option
+    in main.py caps the flow before it reaches this function).
     """
     q = _nonnegative_number("hourly_volume", hourly_volume)
     if q > CAPACITY_VEH_PER_HOUR:

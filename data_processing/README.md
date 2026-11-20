@@ -56,8 +56,36 @@ X_tr = X_tr.reshape(len(X_tr), 12, 1)   # LSTM/GRU input shape, as in the hyswin
 
 `meta_*` gives the site and target time of each window, for per-site metrics and plots. All three models should use the same `lags` and `horizon` so the comparison is fair.
 
-## Open issue: site totals vs the 1500 veh/h capacity
-Summed site totals converted to an hourly rate exceed the conversion PDF's 1500 veh/h capacity **42% of the time** (median 1307, max 5389 veh/h). `routing/travel_time.py` raises `ValueError` above 1500. Per-approach hourly volumes exceed 1500 only 0.65% of the time (max 2345). The group needs to decide which volume feeds the travel-time formula: the approach volume (`scats_15min_by_approach.csv`), or the site total divided by its number of approaches.
+## Flow conversion: per-approach flow for the 1500 veh/h formula (Task 6)
+**Decision (19 Nov, accepted by Dr. Joel):** before the flow-to-speed formula, each site's hourly flow is divided by its number of approaches. The model predictions themselves are not changed.
+
+```
+site_total_veh_per_hour = 4 x predicted 15-minute count        (steady_4x)
+flow_used_veh_per_hour  = site_total_veh_per_hour / n_core_approaches
+```
+
+`n_core_approaches` comes from `scats_sites.csv`. It is the number of approach detectors whose counts were summed into `traffic_volume_15min` (see Cleaning decisions), so the division gives the average flow on one approach road. Sites 3685 and 4264 use their reduced counts (2 and 3) after the broken detectors were dropped, which matches how their totals were built. Counts across the 40 sites: 22 have 4 approaches, 11 have 3, 4 have 2, 2 have 1 and 1 has 6.
+
+**Why:** a SCATS site volume is the total over all roads into the intersection, but the conversion PDF's formula describes one road, whose maximum flow is 93.75^2 / (4 x 1.4648) = 1500 veh/h. On the observed October data (115,584 non-missing 15-minute intervals):
+
+| Flow fed to the formula | Intervals over 1500 veh/h | Max veh/h |
+| --- | --- | --- |
+| Site total (old behaviour) | 43.0% | 5,389 |
+| Site total / approach count (new default) | 0.08% (88 intervals) | 1,820 |
+| Individual approach detectors (`scats_15min_by_approach.csv`) | 0.65% | 2,345 |
+
+With site totals, Reject failed almost all day and Clamp set most sites to the same speed. With per-approach flow, almost every time of day routes under Reject. The 88 intervals that remain over 1500 are morning and evening peaks at three sites: 2825 (Burke Rd S of Eastern Fwy, 1 approach, 60 intervals, mostly 08:00-08:30), 4262 (Bridge Rd SW of Burwood Rd, 1 approach, 17) and 3001 (3 approaches, 11). At those times Reject stops, as the brief's under-capacity assumption requires, for example 2000 -> 3002 at Mon 30 Oct 08:00.
+
+**Settings:** `flow_conversion` in `config.json` and `main.py route --flow-conversion` choose `per_approach` (default) or `site_total` (old behaviour, kept for before/after comparison). `capacity_policy` stays `reject` by default. `clamp` is an experimental option that caps the per-approach flow at 1500 and is labelled as such in the GUI and in the route output. Every route result lists, per site, the predicted 15-minute count, the hourly site total, the approach count and the flow used (`assumptions.site_flows`).
+
+**Edge flow site:** the flow on an edge A -> B comes from its starting site A, as the conversion PDF specifies, and this is applied to every edge (`volume_used_for_edge: origin`). The A2B brief mentions the destination. Dr. Joel accepted either one if it is used consistently and justified.
+
+**Assumptions and limitations:**
+- Traffic splits evenly across a site's approaches. In reality the main road carries more than the side road, so the busier approach is underestimated and the quieter one overestimated.
+- One flow per site is used for every road leaving it, though each edge is one road in one direction. The approach detectors are not matched to individual road links.
+- Detector counts include turning traffic and both lanes of an approach. The 1500 veh/h capacity is the PDF's simplified value, not a per-lane capacity.
+- The 2 single-approach sites (2825, 4262) are unchanged by the division, so they are the ones that can still exceed 1500.
+- The hourly flow is still 4 x one 15-minute forecast (steady_4x), not a forecast of four separate intervals.
 
 ## Road graph: `scats_road_edges.csv`
 
