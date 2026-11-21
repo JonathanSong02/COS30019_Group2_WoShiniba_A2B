@@ -22,7 +22,7 @@ The route CLI requires `--hourly-policy steady_4x` to make its single-forecast h
 - Predicted hourly **approach average** = site total / `n_core_approaches`. This per-approach average is used in the lecturer's `flow = -1.4648375 × speed² + 93.75 × speed` curve, with speed capped at 60 km/h and traffic normally assumed below 1,500 vehicles/hour.
 - Travel time for a link = distance/speed + a 30-second controlled-intersection delay. Distances and road topology are map-reviewed research approximations, not independently verified road geometry.
 - Default edge flow comes from the **origin** site, matching the dedicated conversion PDF. The A2B brief uses the destination site; document the choice and the team's tutor consultation.
-- Unknown sites, unsupported timestamps, missing model checkpoints and over-capacity forecasts are reported as errors, not silently replaced with invented traffic values.
+- Unknown sites, unsupported timestamps and missing checkpoints remain errors (unless explicitly using partial-network testing). Strict Reject excludes only affected over-capacity road edges, warns of the restricted network and reports an error if no feasible route remains. It never fabricates or clamps flow; experimental Clamp must be selected explicitly.
 
 ## Evidence and testing
 
@@ -32,7 +32,7 @@ python run_a2b_testcases.py
 python -m gui.app
 ```
 
-On 20 Nov 2026 in the review environment: **the updated unittest suite** unit tests and **26/26** documented end-to-end acceptance scenarios passed. An example GRU route (2000→3002, last observed 30 Oct 2006 20:00, strict Reject, per-approach) returned 5 routes; fastest was **12.216 minutes** via `2000→4043→4273→4270→4263→3002` with no capacity clamping. These are assignment simulation outputs, not field-measured travel times.
+On 21 Nov 2026 in the corrected review environment: **163/163 unit tests**, **28/28 documented A2B acceptance cases**, and **90/90 original A2A checks** passed. An example GRU route (2000→3002, last observed 30 Oct 2006 20:00, strict Reject, per-approach) returned 5 routes; fastest was **12.216 minutes** via `2000→4043→4273→4270→4263→3002` with no capacity clamping. These are assignment simulation outputs, not field-measured travel times.
 
 See `README_A2B_START_HERE.md` and `docs/SUBMISSION_CHECKLIST.md` before submitting.
 

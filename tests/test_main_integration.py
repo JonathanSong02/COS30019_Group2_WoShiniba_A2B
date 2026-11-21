@@ -91,6 +91,42 @@ class MainIntegrationTests(unittest.TestCase):
             self._routes(101, 105, self.when, self.links, self.coords,
                                    predictor=lambda s,t: 600.0)
 
+    def test_unrelated_overcapacity_does_not_cancel_valid_trip(self):
+        # The overloaded site is in the graph, but no chosen valid path needs
+        # an edge whose flow comes from it. Strict mode filters only its edges.
+        coords = {1: (0.0, 0.0), 2: (0.0, 1.0), 3: (1.0, 1.0), 4: (1.0, 2.0)}
+        roads = [(1, 2, 1.0), (2, 4, 1.0), (1, 3, 2.0), (3, 4, 2.0)]
+        r = self._routes(1, 4, self.when, roads, coords,
+                         predictor=lambda s, t: 600.0 if s == 3 else 50.0,
+                         approach_counts={s: 1 for s in coords})
+        self.assertEqual(r['routes'][0]['scats_sites'], [1, 2, 4])
+        self.assertEqual(list(r['assumptions']['capacity_excluded_sites']), [3])
+        self.assertEqual(r['assumptions']['capacity_excluded_link_count'], 1)
+        self.assertTrue(r['assumptions']['network_incomplete'])
+
+    def test_same_site_trip_does_not_fail_due_to_remote_capacity(self):
+        coords = {1: (0.0, 0.0), 2: (0.0, 1.0), 3: (1.0, 1.0)}
+        roads = [(1, 2, 1.0), (2, 3, 1.0), (3, 1, 1.0)]
+        r = self._routes(1, 1, self.when, roads, coords,
+                         predictor=lambda s, t: 600.0 if s == 3 else 50.0,
+                         approach_counts={s: 1 for s in coords})
+        self.assertEqual(r['routes'][0]['travel_time_seconds'], 0)
+        self.assertEqual(r['routes'][0]['scats_sites'], [1])
+
+    def test_reject_filters_overcapacity_edges_but_clamp_keeps_them(self):
+        coords = {1: (0.0, 0.0), 2: (0.0, 1.0), 3: (1.0, 1.0), 4: (1.0, 2.0)}
+        roads = [(1, 2, 1.0), (2, 4, 1.0), (1, 3, 0.5), (3, 4, 0.5)]
+        p = lambda s, t: 600.0 if s == 3 else 50.0
+        n = {s: 1 for s in coords}
+        strict = self._routes(1, 4, self.when, roads, coords, predictor=p,
+                              approach_counts=n)
+        clamp = self._routes(1, 4, self.when, roads, coords, predictor=p,
+                             approach_counts=n, capacity_policy='clamp')
+        self.assertNotIn(3, strict['routes'][0]['scats_sites'])
+        self.assertEqual(strict['assumptions']['capacity_clamped_sites'], [])
+        self.assertEqual(clamp['assumptions']['capacity_excluded_sites'], {})
+        self.assertIn(3, clamp['assumptions']['capacity_clamped_sites'])
+
     def test_capacity_clamp_explicit(self):
         r = self._routes(101, 105, self.when, self.links, self.coords,
                                    predictor=lambda s,t: 600.0, capacity_policy='clamp')

@@ -156,11 +156,50 @@ def tc_mid_flow():
 
 
 def tc_over_capacity():
-    reject = _rejected(lambda: _routes(2000, 3002, PEAK_TIME, policy="reject"))
-    r = _routes(2000, 3002, PEAK_TIME, policy="clamp")
-    clamped = r["assumptions"]["capacity_clamped_sites"]
-    return (f"reject -> {reject[0][:75]}; clamp -> {len(r['routes'])} routes, capped sites {clamped}",
-            reject[1] and "2825" in reject[0] and len(r["routes"]) == 5 and clamped == [2825])
+    strict = _routes(2000, 3002, PEAK_TIME, policy="reject")
+    experiment = _routes(2000, 3002, PEAK_TIME, policy="clamp")
+    excluded = strict["assumptions"]["capacity_excluded_sites"]
+    nlinks = strict["assumptions"]["capacity_excluded_link_count"]
+    clamped = experiment["assumptions"]["capacity_clamped_sites"]
+    ok = (len(strict["routes"]) == 5 and 2825 in excluded and nlinks > 0
+          and not strict["assumptions"]["capacity_clamped_sites"]
+          and strict["assumptions"]["network_incomplete"]
+          and len(experiment["routes"]) == 5 and clamped == [2825]
+          and experiment["assumptions"]["capacity_excluded_sites"] == {})
+    return (f"Reject -> {len(strict['routes'])} feasible routes; excluded site 2825 "
+            f"and {nlinks} affected links; experimental Clamp -> "
+            f"{len(experiment['routes'])} routes, capped sites {clamped}", ok)
+
+
+def tc_unrelated_capacity():
+    from main import compute_traffic_routes
+    coords = {1: (0, 0), 2: (0, 1), 3: (1, 1), 4: (1, 2)}
+    roads = [(1, 2, 1.0), (2, 4, 1.0), (1, 3, 2.0), (3, 4, 2.0)]
+    result = compute_traffic_routes(1, 4, ROUTE_TIME, roads, coords,
+            predictor=lambda s, t: 600.0 if s == 3 else 50.0,
+            approach_counts={s: 1 for s in coords})
+    a = result["assumptions"]
+    ok = (result["routes"][0]["scats_sites"] == [1, 2, 4]
+          and set(a["capacity_excluded_sites"]) == {3}
+          and a["capacity_excluded_link_count"] == 1
+          and a["network_incomplete"])
+    return (f"valid path {result['routes'][0]['scats_sites']}; capacity excluded "
+            f"{list(a['capacity_excluded_sites'])}, {a['capacity_excluded_link_count']} edge", ok)
+
+
+def tc_missing_detector_numeric():
+    import pandas as pd
+    from data_processing.scats_preprocess import site_totals
+    instant = pd.Timestamp("2006-10-01T00:00:00")
+    detector_rows = pd.DataFrame({
+        "scats_site": [99, 99], "approach": ["A", "B"],
+        "datetime": [instant, instant], "volume": [8.0, float("nan")],
+    })
+    grid = pd.MultiIndex.from_tuples([(99, instant)], names=["scats_site", "datetime"])
+    result = site_totals(detector_rows, {99: {"A", "B"}}, grid)
+    value = result.loc[0, "traffic_volume_15min"]
+    return ("partly missing detector value produces blank site-total" if pd.isna(value)
+            else f"incorrect partial sum {value}", bool(pd.isna(value)))
 
 
 def tc_per_approach_flow():
@@ -315,9 +354,9 @@ CASES = [
     Case("TC14", "Travel time", "Jonathan", "Medium flow uses the under-capacity (green) branch",
          "1000 veh/h", "about 50.48 km/h (between 32 and 60)", tc_mid_flow,
          "v = (-B - sqrt(B^2 + 4Aq)) / 2A with A = -1.4648, B = 93.75"),
-    Case("TC15", "Travel time", "Team", "Over-capacity forecast: Reject stops, Clamp caps and continues",
+    Case("TC15", "Travel time", "Team", "Over-capacity forecast: Reject excludes affected edges; Clamp is experimental",
          f"2000 -> 3002, Regression Tree, {PEAK_TIME} (morning peak)",
-         "Reject: error naming site 2825; Clamp (experimental): 5 routes with only 2825 capped", tc_over_capacity,
+         "Reject: 5 feasible routes with 2825 edges excluded; Clamp: 5 routes with only 2825 capped", tc_over_capacity,
          "2825 (Burke Rd S of Eastern Fwy) has 1 approach detector, so its per-approach flow is the "
          "site total; it exceeds 1500 veh/h at 08:00-08:30. Reject is the default, as the brief assumes "
          "roads are under capacity"),
@@ -357,6 +396,14 @@ CASES = [
          "'30/10/2006 8am'", "message containing 'unavailable', no number", tc_gui_bad_date),
     Case("TC26", "GUI", "Darren", "Route guidance tab returns the route table and the map",
          f"2000 -> 3002, Regression Tree, {ROUTE_TIME}, Reject", "5 table rows and a map", tc_gui_routes_and_map),
+    Case("TC27", "Routing", "Jonathan", "Remote over-capacity site does not cancel a feasible selected journey",
+         "Synthetic four-site graph; site 3 over capacity; trip 1 -> 4",
+         "1 -> 2 -> 4 remains valid; only edge from site 3 excluded with warning",
+         tc_unrelated_capacity, "Synthetic regression test for selective strict capacity handling"),
+    Case("TC28", "Data processing", "Jonathan", "Missing numeric detector value is not summed as a complete site total",
+         "Synthetic site 99, approaches A=8 and B=missing at the same interval",
+         "Site total is missing, never a partial count of 8",
+         tc_missing_detector_numeric, "Reproduces and checks the detector NaN robustness fix"),
 ]
 
 

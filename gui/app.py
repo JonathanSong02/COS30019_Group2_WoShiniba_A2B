@@ -216,6 +216,9 @@ def run_route_comparison(origin, destination, as_of_time, capacity_policy, route
         status += "\n\n⚠️ This algorithm does not guarantee the fastest travel-time routes."
     if policy == "clamp":
         status += "\n\nExperimental Clamp is on: sites forecast above 1,500 veh/h per approach are capped, which hides differences between models there."
+    else:
+        status += ("\n\nStrict Reject removes edges that depend on an over-capacity forecast; "
+                   "if any are excluded, ranked routes are optimal only within the feasible network.")
     map_html = route_map_html(road_file, comparison_view.best_routes_for_map(by_model),
                               origin=start, destination=end,
                               model_label=f"Best route per model · {when:%a %d %b %H:%M}")
@@ -267,10 +270,16 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
         partial = result["assumptions"]["network_incomplete"]
         if partial:
             unavailable = sorted(result["assumptions"]["unavailable_sites"])
-            prefix = ("⚠️ **PARTIAL-NETWORK DEVELOPMENT RESULT — not a verified best route on the "
-                      f"full 40-site graph.** Excluded forecast-unavailable SCATS sites: "
-                      f"{', '.join(map(str, unavailable))}. "
-                      f"Excluded {result['assumptions']['excluded_road_link_count']} road-link rows. ")
+            over_capacity = sorted(result["assumptions"]["capacity_excluded_sites"])
+            parts = ["⚠️ **PARTIAL-NETWORK / CONSTRAINED NETWORK — routes are valid only within eligible roads, "
+                     "not necessarily the fastest on the unfiltered road graph.**"]
+            if unavailable:
+                parts.append("Forecast-unavailable SCATS sites: " + ", ".join(map(str, unavailable)) + ".")
+            if over_capacity:
+                parts.append("Strict Reject excluded roads using over-capacity SCATS sites: "
+                             + ", ".join(map(str, over_capacity)) + ".")
+            parts.append(f"Excluded {result['assumptions']['excluded_road_link_count']} road-link rows.")
+            prefix = " ".join(parts) + " "
         else:
             prefix = "✅ "
         method_note = ("Cost-optimal top routes" if result["assumptions"]["search_cost_optimal"]
@@ -293,6 +302,10 @@ def run_routes(origin, destination, as_of_time, model, horizon_minutes,
                 "unavailable_sites": {
                     str(site): reason
                     for site, reason in result["assumptions"]["unavailable_sites"].items()
+                },
+                "capacity_excluded_sites": {
+                    str(site): flow
+                    for site, flow in result["assumptions"]["capacity_excluded_sites"].items()
                 },
             },
         }
@@ -507,7 +520,7 @@ def build_app() -> gr.Blocks:
                         rc_dest = gr.Dropdown(label="Destination SCATS site", choices=sites, value=dest_site,
                                               allow_custom_value=True)
                         rc_time = gr.Textbox(label="Last observed date/time", value=DEFAULT_COMPARISON_TIME,
-                                             info="Default Mon 30 Oct 20:00. At 08:00-08:30 site 2825 exceeds 1,500 veh/h per approach, so Reject stops")
+                                             info="Default Mon 30 Oct 20:00. At 08:00-08:30 site 2825 exceeds 1,500 veh/h; strict Reject excludes its affected edges.")
                         rc_capacity = gr.Radio(label="Over-capacity policy", choices=[
                             "Reject values above 1500 veh/hour", "Clamp to 1500 (experimental)"],
                             value="Reject values above 1500 veh/hour")

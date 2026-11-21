@@ -4,8 +4,8 @@ The active A2B route engine uses DFS, BFS, GBFS, A*, IDDFS and weighted IDA*, **
 
 ## What was verified
 
-* 158/158 Python unit tests passed in the reviewed environment, including 10 additional six-method integration tests.
-* 26/26 recorded A2B acceptance scenarios passed, covering data, three predictors, traffic conversion, graph, routing and GUI.
+* 163/163 Python unit tests passed in the reviewed environment, including 10 additional six-method integration tests.
+* 28/28 recorded A2B acceptance scenarios passed, covering data, three predictors, traffic conversion, graph, routing and GUI.
 * Both Gradio routing areas expose six-method dropdowns; configuration sets default `AS`.
 * A2B CLI `--search-algorithm CUS2` returned 5 routes for SCATS 2000 to 3002 (30 October 2006, 20:00), best 12.282 min.
 * Brute-force enumeration on small directed weighted graphs independently matched the A* and weighted IDA* top-five paths (including cycles, ties, zero-cost links and randomized DAGs).

@@ -99,9 +99,16 @@ def site_totals(long, core, full_index):
     """
     is_core = [a in core[s] for s, a in zip(long["scats_site"], long["approach"])]
     agg = long[is_core].groupby(["scats_site", "datetime"]).agg(
-        traffic_volume_15min=("volume", "sum"), n_reporting=("approach", "nunique"))
+        traffic_volume_15min=("volume", "sum"),
+        n_reporting=("approach", "nunique"),
+        n_numeric=("volume", "count"),  # NaN counts are NOT valid reports
+    )
     expected = agg.index.get_level_values("scats_site").map({s: len(a) for s, a in core.items()})
-    agg.loc[agg["n_reporting"].values != expected.values, "traffic_volume_15min"] = float("nan")
+    # pandas sum skips NaN. A present detector row with a missing count must
+    # never make a partly observed site look like a genuine low-traffic period.
+    incomplete = ((agg["n_reporting"].values != expected.values)
+                  | (agg["n_numeric"].values != expected.values))
+    agg.loc[incomplete, "traffic_volume_15min"] = float("nan")
     out = agg[["traffic_volume_15min"]].reindex(full_index)  # whole missing days -> NaN
     return out.reset_index()
 

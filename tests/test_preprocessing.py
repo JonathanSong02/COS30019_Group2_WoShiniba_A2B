@@ -14,7 +14,7 @@ from data_processing.dataset import (
     SPLIT_DAYS, split_of, fit_minmax, apply_minmax, inverse_minmax,
     load_series, load_scaler, make_windows,
 )
-from data_processing.scats_preprocess import core_approaches
+from data_processing.scats_preprocess import core_approaches, site_totals
 
 PROCESSED = os.path.join("data", "processed")
 SERIES = os.path.join(PROCESSED, "scats_15min.csv")
@@ -131,6 +131,24 @@ class CoreApproachTests(unittest.TestCase):
         raw = self._raw({"dies_23_oct": october[:22]})
         with self.assertRaises(ValueError):
             core_approaches(raw)
+
+
+class SiteAggregationMissingValueTests(unittest.TestCase):
+    def test_missing_numeric_detector_count_does_not_fake_low_site_total(self):
+        t = pd.Timestamp("2006-10-01T00:00:00")
+        raw = pd.DataFrame({"scats_site": [99, 99], "approach": ["A", "B"],
+                            "datetime": [t, t], "volume": [8.0, np.nan]})
+        index = pd.MultiIndex.from_tuples([(99, t)], names=["scats_site", "datetime"])
+        actual = site_totals(raw, {99: {"A", "B"}}, index)
+        self.assertTrue(np.isnan(actual.loc[0, "traffic_volume_15min"]))
+
+    def test_complete_numeric_detector_counts_are_summed(self):
+        t = pd.Timestamp("2006-10-01T00:00:00")
+        raw = pd.DataFrame({"scats_site": [99, 99], "approach": ["A", "B"],
+                            "datetime": [t, t], "volume": [8.0, 9.0]})
+        index = pd.MultiIndex.from_tuples([(99, t)], names=["scats_site", "datetime"])
+        actual = site_totals(raw, {99: {"A", "B"}}, index)
+        self.assertEqual(actual.loc[0, "traffic_volume_15min"], 17.0)
 
 
 @unittest.skipUnless(os.path.exists(SERIES), "run scats_preprocess first")

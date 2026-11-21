@@ -226,9 +226,10 @@ def compute_traffic_routes(
     approach_counts: {site: n_core_approaches}; read from scats_sites.csv when
           omitted. A site with no count is an error, never a guess.
 
-    capacity_policy applies to the converted flow: 'reject' (default, as the
-    brief assumes every road is under capacity) raises above 1,500 veh/hour;
-    'clamp' is an EXPERIMENTAL option that caps the flow at 1,500 veh/hour.
+    capacity_policy applies to the converted flow: 'reject' (default) excludes
+    road edges using an over-capacity site's flow and reports those exclusions;
+    if no feasible route survives, it raises. 'clamp' is an EXPERIMENTAL
+    sensitivity option that caps the flow at 1,500 veh/hour.
     """
     as_of = valid_as_of(as_of_time)
     if hourly_policy != "steady_4x":
@@ -263,6 +264,10 @@ def compute_traffic_routes(
     hourly = {}
     site_flows = []      # per-site record of each conversion step, for reporting
     clamped_sites = []
+    # In strict mode, roads whose cost depends on a site exceeding the
+    # conversion formula's 1500 veh/h domain are INELIGIBLE, not a reason to
+    # abort a completely unrelated origin-to-destination journey.
+    capacity_excluded_sites = {}
     excluded_sites = {}
     for site in required_sites:
         try:
@@ -301,22 +306,28 @@ def compute_traffic_routes(
                   "clamped": False}
         if hourly_estimate > CAPACITY_VEH_PER_HOUR:
             if capacity_policy == "reject":
-                raise ValueError(
-                    f"SCATS {site} predicted {hourly_estimate:.1f} {flow_label} vehicles/hour "
-                    f"under steady_4x, exceeding the lecturer's "
-                    f"{CAPACITY_VEH_PER_HOUR:.0f} veh/hour assumption. "
-                    "The brief assumes every road is under capacity; the "
-                    "experimental --capacity-policy clamp caps it instead."
-                )
-            clamped_sites.append(site)
-            hourly_estimate = CAPACITY_VEH_PER_HOUR
-            record["flow_used_veh_per_hour"] = CAPACITY_VEH_PER_HOUR
-            record["clamped"] = True
+                capacity_excluded_sites[site] = hourly_estimate
+                record["capacity_excluded"] = True
+            else:
+                clamped_sites.append(site)
+                hourly_estimate = CAPACITY_VEH_PER_HOUR
+                record["flow_used_veh_per_hour"] = CAPACITY_VEH_PER_HOUR
+                record["clamped"] = True
         hourly[site] = hourly_estimate
         site_flows.append(record)
-    usable_links = ([ (u, v, d) for u, v, d in verified_road_links
-                       if u not in excluded_sites and v not in excluded_sites]
-                    if missing_site_policy == "exclude" else verified_road_links)
+    # Strict Reject applies to an *edge*, according to the site supplying that
+    # edge's flow. Other edges remain eligible; no traffic is fabricated.
+    # This deliberately removes edges rather than silently clamping them.
+    usable_links = [
+        (u, v, d) for u, v, d in verified_road_links
+        if (u not in excluded_sites and v not in excluded_sites)
+        and (u if flow_site == "origin" else v) not in capacity_excluded_sites
+    ]
+    capacity_excluded_link_count = sum(
+        (u if flow_site == "origin" else v) in capacity_excluded_sites
+        and u not in excluded_sites and v not in excluded_sites
+        for u, v, _ in verified_road_links
+    )
     if missing_site_policy == "exclude" and (origin in excluded_sites or destination in excluded_sites):
         raise ValueError("Selected origin/destination has no usable prediction. "
                          "Choose another site or a date with complete historical data.")
@@ -326,6 +337,21 @@ def compute_traffic_routes(
     )
     graph = build_weighted_scats_graph(site_coords, edges)
     routes, search_stats = search_routes(graph, origin, destination, k=k, algorithm=search_algorithm)
+    # If *every* path is blocked by the capacity restriction, strict mode
+    # reports the modelling boundary rather than claiming an ordinary
+    # disconnected graph. A trivial origin==destination trip is still valid.
+    if not routes and capacity_excluded_sites and origin != destination:
+        blocked = ", ".join(
+            f"SCATS {site} predicted {flow:.1f} "
+            f"{'per-approach' if flow_conversion == 'per_approach' else 'site-total'} vehicles/hour"
+            for site, flow in sorted(capacity_excluded_sites.items())
+        )
+        raise ValueError(
+            "No feasible route under strict Reject: road costs depend on "
+            f"{blocked}, exceeding the {CAPACITY_VEH_PER_HOUR:.0f} "
+            "veh/hour under-capacity assumption. Experimental Clamp is available "
+            "for sensitivity tests, not as a measured speed."
+        )
     return {
         "origin": origin,
         "destination": destination,
@@ -353,8 +379,11 @@ def compute_traffic_routes(
             "capacity_policy": capacity_policy,
             "capacity_policy_note": ("EXPERIMENTAL: flows above 1500 veh/hour capped at 1500"
                                      if capacity_policy == "clamp" else
-                                     "flows above 1500 veh/hour are rejected (brief's under-capacity assumption)"),
+                                     "Strict Reject: edges using flows above 1500 veh/hour are excluded; "
+                                     "routes are fastest only within the feasible under-capacity graph"),
             "capacity_clamped_sites": clamped_sites,
+            "capacity_excluded_sites": {int(site): round(flow, 2) for site, flow in sorted(capacity_excluded_sites.items())},
+            "capacity_excluded_link_count": capacity_excluded_link_count,
             "site_flows": site_flows,
             "intersection_delay_seconds": intersection_delay_seconds,
             "road_links": "Caller-supplied map-reviewed directed edges; no roads inferred at runtime",
@@ -364,9 +393,12 @@ def compute_traffic_routes(
             "source_road_link_count": len(verified_road_links),
             "usable_road_link_count": len(usable_links),
             "excluded_road_link_count": len(verified_road_links) - len(usable_links),
-            "network_incomplete": bool(excluded_sites),
+            "network_incomplete": bool(excluded_sites) or bool(capacity_excluded_sites),
             "route_scope": ("PARTIAL model-covered graph; not globally optimal on full road network"
-                            if excluded_sites else "All supplied graph links eligible"),
+                            if excluded_sites else
+                            "Strict under-capacity feasible subgraph; over-capacity edges excluded"
+                            if capacity_excluded_sites else
+                            "All supplied graph links eligible"),
         },
     }
 
