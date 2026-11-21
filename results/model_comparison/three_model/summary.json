@@ -75,7 +75,7 @@
         "nrmse_percent": 5.5375538063691545,
         "training_time_seconds": 6.2223800649998795,
         "model_selection_seconds": null,
-        "prediction_time_per_sample_seconds": 1.33385748333151e-05
+        "prediction_time_per_sample_seconds": 1.3352111291610114e-05
       },
       "Regression Tree": {
         "mae": 29.038001191119015,

@@ -376,6 +376,7 @@ def predict_lstm(
     scaler_path: str | Path,
     model_dir: str | Path = "saved_models",
     sequence_length: int = 8,
+    verbose: bool = False,
 ) -> float:
     """Predict traffic flow at as_of_time plus the selected horizon."""
 
@@ -506,10 +507,11 @@ def predict_lstm(
     # Traffic volume cannot be negative.
     prediction = max(0.0, prediction)
 
-    print(
-        f"LSTM prediction completed in "
-        f"{prediction_time_seconds:.6f} seconds"
-    )
+    if verbose:
+        print(
+            f"LSTM prediction completed in "
+            f"{prediction_time_seconds:.6f} seconds"
+        )
 
     return prediction
 
