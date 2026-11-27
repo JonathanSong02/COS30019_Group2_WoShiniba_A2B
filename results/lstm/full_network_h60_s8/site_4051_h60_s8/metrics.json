@@ -1,0 +1,14 @@
+{
+  "count": 480,
+  "mae": 34.151764650035574,
+  "rmse": 45.39588081169361,
+  "nrmse": 0.1297025174039833,
+  "nrmse_normalisation": "range",
+  "model": "LSTM",
+  "scats_site": 4051,
+  "horizon_minutes": 60,
+  "sequence_length": 8,
+  "training_time_seconds": 1.6880924099999675,
+  "prediction_time_seconds": 0.0013302709999720719,
+  "prediction_time_per_sample_seconds": 2.771397916608483e-06
+}

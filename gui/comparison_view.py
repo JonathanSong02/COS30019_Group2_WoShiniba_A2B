@@ -28,6 +28,7 @@ THREE_MODEL_DIR = ROOT / "results" / "model_comparison" / "three_model"
 EXTRAS_DIR = ROOT / "results" / "model_comparison" / "regression_tree"
 MODELS_DIR = ROOT / "saved_models"
 LSTM_SITE_2000_DIR = ROOT / "results" / "lstm_site2000_comparison"
+LSTM_NETWORK_DIR = ROOT / "results" / "lstm"
 
 MODELS = ("GRU", "LSTM", "Regression Tree")
 BACKEND_NAMES = {"GRU": "gru", "LSTM": "lstm", "Regression Tree": "regression_tree"}
@@ -193,12 +194,17 @@ def overview_specs(results: Mapping) -> list[dict]:
 
 
 def prediction_files(site: int, horizon: int, models_dir: Path = MODELS_DIR,
-                     lstm_site_2000_dir: Path = LSTM_SITE_2000_DIR) -> dict[str, Path]:
+                     lstm_site_2000_dir: Path = LSTM_SITE_2000_DIR,
+                     lstm_network_dir: Path = LSTM_NETWORK_DIR) -> dict[str, Path]:
     files = {"GRU": models_dir / f"gru_site_{site}_h{horizon}_s8_test_predictions.csv",
              "Regression Tree": models_dir / f"rt_site_{site}_h{horizon}_s8_test_predictions.csv"}
     lstm = models_dir / f"lstm_site_{site}_h{horizon}_s8_test_predictions.csv"
     if not lstm.is_file() and site == 2000:
         lstm = lstm_site_2000_dir / f"site_2000_h{horizon}_s8" / "predictions.csv"
+    if not lstm.is_file():
+        # Full-network LSTM evaluations keep their test predictions beside their metrics.
+        lstm = (lstm_network_dir / f"full_network_h{horizon}_s8"
+                / f"site_{site}_h{horizon}_s8" / "predictions.csv")
     files["LSTM"] = lstm
     return {m: files[m] for m in MODELS}
 

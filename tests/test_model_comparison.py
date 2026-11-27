@@ -98,7 +98,8 @@ class ComparisonTabTests(unittest.TestCase):
     def test_actual_vs_predicted_reports_missing_model_files(self):
         with tempfile.TemporaryDirectory() as tmp:
             spec, notes = cv.actual_vs_predicted_spec(970, 15, "2006-10-30", models_dir=Path(tmp),
-                                                      lstm_site_2000_dir=Path(tmp))
+                                                      lstm_site_2000_dir=Path(tmp),
+                                                      lstm_network_dir=Path(tmp))
         self.assertIsNone(spec)
         self.assertEqual(len(notes), 3)
 

@@ -1,4 +1,4 @@
-"""Matched three-model evaluation for the 15-minute SCATS network and site 2000 horizons."""
+"""Matched three-model evaluation across the SCATS network at 15, 30 and 60 minutes."""
 
 from __future__ import annotations
 
@@ -45,11 +45,10 @@ def paths_for(site: int, horizon: int) -> dict[str, Path]:
     candidates = []
     if site == 2000:
         candidates.append(Path(f"results/lstm_site2000_comparison/site_{site}_h{horizon}_s8/predictions.csv"))
+    # Full-network LSTM runs are stored per horizon (15, 30 and 60 minutes).
+    candidates.append(Path(f"results/lstm/full_network_h{horizon}_s8/site_{site}_h{horizon}_s8/predictions.csv"))
     if horizon == 15:
-        candidates.extend([
-            Path(f"results/lstm/full_network_h15_s8/site_{site}_h15_s8/predictions.csv"),
-            Path(f"results/lstm/final_two_sites_h15_s8/site_{site}_h15_s8/predictions.csv"),
-        ])
+        candidates.append(Path(f"results/lstm/final_two_sites_h15_s8/site_{site}_h15_s8/predictions.csv"))
     candidates.append(Path(f"results/lstm/site_{site}_h{horizon}_s8/predictions.csv"))
     result["LSTM"] = next((p for p in candidates if p.exists()), candidates[-1])
     return result
@@ -188,6 +187,23 @@ def compare() -> dict:
     fig.suptitle(f"Three-model comparison · 15 min · lookback 8 · {len(common_sites['15'])} shared sites")
     fig.tight_layout()
     fig.savefig(OUTPUT / "network_h15_macro_comparison.png", dpi=180)
+    plt.close(fig)
+
+    # Network-wide macro averages for every forecast horizon.
+    fig, axes = plt.subplots(1, 3, figsize=(13, 4))
+    for ax, metric, title in zip(axes, ("mae", "rmse", "nrmse_percent"), ("Macro mean MAE", "Macro mean RMSE", "Macro mean NRMSE (%)")):
+        for name, color in zip(MODEL_NAMES, ("#4472C4", "#ED7D31", "#70AD47")):
+            values = [summary["macro_average_metrics_by_horizon"][str(h)].get(name, {}).get(metric) for h in HORIZONS]
+            ax.plot(HORIZONS, values, marker="o", label=name, color=color)
+        ax.set_title(title)
+        ax.set_xlabel("Horizon (minutes)")
+        ax.set_xticks(HORIZONS)
+        ax.grid(alpha=0.25)
+    axes[0].set_ylabel("Vehicles / 15 min")
+    axes[0].legend()
+    fig.suptitle(f"Three-model comparison · all horizons · lookback 8 · {len(common_sites['60'])} shared sites")
+    fig.tight_layout()
+    fig.savefig(OUTPUT / "network_all_horizons_comparison.png", dpi=180)
     plt.close(fig)
 
     # Site 2000 is the matched reference for all three forecast horizons.

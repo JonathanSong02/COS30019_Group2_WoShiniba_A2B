@@ -1,4 +1,8 @@
-.venv/
+__pycache__/
+*.pyc
+.venv*/
+Claude outputs/
 data/raw/
 data/processed/scats_15min_by_approach.csv
-__pycache__/
+*.docx
+~$*

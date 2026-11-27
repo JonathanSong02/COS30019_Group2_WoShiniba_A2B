@@ -35,7 +35,7 @@ Evidence: `tests/test_six_search_a2b.py` checks all six, including independent e
 
 ## Still applicable limitations
 
-* Model horizon availability depends on saved checkpoints. Full-network 30/60 minute GRU/LSTM checkpoints are not available.
+* All three models have saved checkpoints for all 40 sites at 15, 30 and 60 minutes.
 * Road distances are approximations; the 4× flow conversion and even per-approach allocation are assumptions.
 * The strict global capacity policy and raw-detector missing-value preprocessing findings from the earlier system audit are **not fixed by this search-algorithm migration**.
 * **Revise your A2B report:** replace all Yen/Dijkstra routing descriptions with the six-method method/results and explain why A* or weighted IDA* is selected for optimal top-five routing.
